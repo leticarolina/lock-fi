@@ -1,6 +1,6 @@
 # 🔒 LockFi — Cofre com Proteção Contra Saques Arriscados
 
-**LockFi** é um cofre inteligente que ajuda a evitar perdas rápidas de fundos ao adicionar um **tempo de espera** em saques considerados arriscados.
+**LockFi** é um cofre inteligente que ajuda a evitar perdas rápidas de fundos adicionando um **tempo de espera** em saques considerados arriscados.
 
 Em vez de permitir que grandes valores saiam instantaneamente, o LockFi cria um **período de espera**, dando ao usuário tempo para reagir, cancelar ou bloquear o cofre.
 
