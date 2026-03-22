@@ -19,8 +19,8 @@ contract LockFi {
     error NoPendingWithdraw();
     error VaultLocked();
 
-    uint256 public constant DELAY = 1 hours;
-    uint256 public constant LOCK_DURATION = 24 hours;
+    uint256 public constant DELAY = 1 minutes;
+    uint256 public constant LOCK_DURATION = 2 minutes;
 
     mapping(address => uint256) public balances; //Tracks withdrawable funds (not pending funds)
     mapping(address => WithdrawalRequest) public pendingWithdraw; // Pending withdrawals per user
