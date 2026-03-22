@@ -1,6 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+/**
+ * @title LockFi
+ * @author Leticia Azevedo
+ * @notice LockFi is a security-focused smart vault that protects users from risky withdrawals
+ * by introducing time-delayed execution for suspicious or large withdrawal behavior.
+ * @dev This contract acts as a self-custody vault where users deposit ETH and withdraw funds
+ * based on risk-aware logic. Withdrawals that exceed predefined safety thresholds are
+ * delayed instead of executed instantly, allowing users time to react in case of compromise.
+ */
+
 contract LockFi {
     error AmountZero();
     error InsufficientBalance(uint256 balance);
@@ -146,6 +156,14 @@ contract LockFi {
         delete pendingWithdraw[msg.sender];
 
         emit WithdrawalCancelled(msg.sender, amount);
+    }
+
+    function emergencyLock() external {
+        uint256 unlockTime = block.timestamp + LOCK_DURATION;
+
+        lockedUntil[msg.sender] = unlockTime;
+
+        emit EmergencyLockActivated(msg.sender, unlockTime);
     }
 
     // RISK DETECTION
