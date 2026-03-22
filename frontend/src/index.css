@@ -1,0 +1,118 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #0a0b0f;
+  color: #e2e4f0;
+  font-family: 'IBM Plex Mono', monospace;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #12131a;
+}
+::-webkit-scrollbar-thumb {
+  background: #252836;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #363a4f;
+}
+
+/* Glow input focus */
+input[type="text"],
+input[type="number"] {
+  transition: all 0.2s ease;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 229, 160, 0.3);
+}
+
+/* Noise texture overlay */
+.noise-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+}
+
+/* Grid background */
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(37, 40, 54, 0.3) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(37, 40, 54, 0.3) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+/* Gradient mesh blob */
+.gradient-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  pointer-events: none;
+}
+
+@layer components {
+  .btn-primary {
+    @apply relative overflow-hidden px-6 py-3 font-body font-medium text-sm tracking-wider uppercase
+           bg-vault-accent text-vault-bg rounded-lg
+           transition-all duration-200
+           hover:shadow-[0_0_30px_rgba(0,229,160,0.3)]
+           active:scale-[0.97]
+           disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none;
+  }
+
+  .btn-secondary {
+    @apply px-6 py-3 font-body font-medium text-sm tracking-wider uppercase
+           bg-transparent text-vault-text border border-vault-border rounded-lg
+           transition-all duration-200
+           hover:border-vault-accent hover:text-vault-accent
+           active:scale-[0.97]
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  .btn-danger {
+    @apply px-6 py-3 font-body font-medium text-sm tracking-wider uppercase
+           bg-transparent text-vault-danger border border-vault-danger/30 rounded-lg
+           transition-all duration-200
+           hover:bg-vault-danger/10 hover:border-vault-danger
+           active:scale-[0.97];
+  }
+
+  .card {
+    @apply bg-vault-card border border-vault-border rounded-2xl p-6
+           backdrop-blur-sm;
+  }
+
+  .input-field {
+    @apply w-full bg-vault-surface border border-vault-border rounded-lg
+           px-4 py-3 font-body text-sm text-vault-text
+           placeholder:text-vault-muted
+           focus:border-vault-accent/50
+           transition-all duration-200;
+  }
+}
