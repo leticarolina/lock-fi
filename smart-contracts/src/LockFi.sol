@@ -49,6 +49,12 @@ contract SafeVault {
         emit Deposited(msg.sender, msg.value);
     }
 
+    receive() external payable {
+        balances[msg.sender] += msg.value;
+
+        emit Deposited(msg.sender, msg.value);
+    }
+
     /// WITHDRAW FUNCTION
     /// @notice Attempt withdrawal
     function withdraw(uint256 amount) external {
@@ -169,5 +175,117 @@ contract SafeVault {
         (bool success, ) = to.call{value: amount}("");
 
         require(success, "Transfer failed");
+    }
+
+    /*
+    ============================================================
+                    VIEW HELPERS
+    ============================================================
+    */
+    /// @notice Returns true if user has pending withdrawal
+
+    function getUserVaultBalance(address user) external view returns (uint256) {
+        return balances[user];
+    }
+
+    /// @notice Returns true if user has pending withdrawal
+    function hasPendingWithdraw(address user) external view returns (bool) {
+        return pendingWithdraw[user].amount > 0;
+    }
+
+    /// @notice Returns instant withdraw limit
+    function getInstantWithdrawLimit(
+        address user
+    ) external view returns (uint256) {
+        if (pendingWithdraw[user].amount > 0) {
+            return 0;
+        }
+        return (balances[user] * 40) / 100;
+    }
+
+    function getPendingWithdraw(
+        address user
+    )
+        external
+        view
+        returns (uint256 amount, uint256 unlockTime, uint256 requestTime)
+    {
+        WithdrawalRequest memory req = pendingWithdraw[user];
+
+        return (req.amount, req.unlockTime, req.requestTime);
+    }
+
+    function isVaultLocked(address user) external view returns (bool) {
+        return block.timestamp < lockedUntil[user];
+    }
+
+    function getRemainingLockTime(
+        address user
+    ) external view returns (uint256) {
+        uint256 lockTime = lockedUntil[user];
+
+        if (block.timestamp >= lockTime) {
+            return 0;
+        }
+
+        return lockTime - block.timestamp;
+    }
+
+    function getRemainingPendingTime(
+        address user
+    ) external view returns (uint256) {
+        WithdrawalRequest memory req = pendingWithdraw[user];
+
+        if (req.amount == 0) {
+            return 0;
+        }
+
+        if (block.timestamp >= req.unlockTime) {
+            return 0;
+        }
+
+        return req.unlockTime - block.timestamp;
+    }
+
+    function getUserState(
+        address user
+    )
+        external
+        view
+        returns (
+            uint256 balance,
+            uint256 instantLimit,
+            bool hasPending,
+            uint256 pendingAmount,
+            uint256 remainingPendingTime,
+            bool isLocked,
+            uint256 remainingLockTime
+        )
+    {
+        balance = balances[user];
+        WithdrawalRequest memory req = pendingWithdraw[user];
+        if (req.amount > 0) {
+            instantLimit = 0;
+        } else {
+            instantLimit = (balance * 40) / 100;
+        }
+
+        hasPending = req.amount > 0;
+
+        pendingAmount = req.amount;
+
+        if (req.amount > 0 && block.timestamp < req.unlockTime) {
+            remainingPendingTime = req.unlockTime - block.timestamp;
+        }
+
+        isLocked = block.timestamp < lockedUntil[user];
+
+        if (isLocked) {
+            remainingLockTime = lockedUntil[user] - block.timestamp;
+        }
+    }
+
+    function totalBalance() external view returns (uint256) {
+        return address(this).balance;
     }
 }
