@@ -11,119 +11,122 @@ export default function EmergencyLockCard() {
 
   const handleActivate = async () => {
     setIsActivating(true)
-    await new Promise(r => setTimeout(r, 500))
-    activateEmergencyLock()
-    setIsActivating(false)
-    setShowConfirm(false)
+    try {
+      await activateEmergencyLock()
+    } catch (err) {
+      console.error('Emergency lock failed:', err)
+    } finally {
+      setShowConfirm(false)
+      setIsActivating(false)
+    }
   }
 
-  // If lock is active, show the active lock card
+  // If lock is active, show disabled gray card with timer
   if (locked) {
-    const activatedDate = emergencyLock.activatedAt.toLocaleDateString('en-US', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    })
-    const activatedTime = emergencyLock.activatedAt.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-    })
-
     return (
-      <div className="relative rounded-2xl overflow-hidden">
-        {/* Red pulsing border glow */}
-        <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-vault-danger/25 via-vault-danger/5 to-transparent pointer-events-none" />
-
-        <div className="card border-vault-danger/30 relative">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <div className="w-10 h-10 rounded-xl bg-vault-danger/15 flex items-center justify-center">
-                  <svg className="w-5 h-5 text-vault-danger" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                  </svg>
-                </div>
-                {/* Pulse ring */}
-                <span className="absolute inset-0 rounded-xl border-2 border-vault-danger/40 animate-ping" style={{ animationDuration: '2s' }} />
-              </div>
-              <div>
-                <h3 className="font-display font-700 text-base text-vault-danger tracking-wide">
-                  Emergency Lock Active
-                </h3>
-                <p className="text-vault-muted text-[10px] font-body tracking-wider uppercase mt-0.5">
-                  All withdrawals are frozen
-                </p>
-              </div>
+      <div style={{
+        backgroundColor: '#d4d4d4',
+        borderColor: '#b8b8b8',
+        borderWidth: 1,
+        borderStyle: 'solid',
+        borderRadius: 16,
+        padding: 24,
+        opacity: 0.85,
+        position: 'relative',
+      }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: '#b8b8b8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg style={{ width: 20, height: 20, color: '#666' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
             </div>
-
-            {/* Active badge */}
-            <span className="px-3 py-1.5 bg-vault-danger/10 border border-vault-danger/30 rounded-full text-vault-danger text-[10px] font-body tracking-wider uppercase animate-pulse">
-              Locked
-            </span>
-          </div>
-
-          {/* Info row */}
-          <div className="grid grid-cols-2 gap-4 mb-5 p-4 bg-vault-surface/80 rounded-xl border border-vault-border/50">
-            <div className="space-y-1">
-              <p className="text-vault-muted text-[10px] font-body tracking-[0.12em] uppercase">
-                Activated
-              </p>
-              <p className="font-body text-xs text-vault-text-dim">
-                {activatedDate}, {activatedTime}
-              </p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-vault-muted text-[10px] font-body tracking-[0.12em] uppercase">
-                Unlocks In
-              </p>
-              <p className="font-display font-700 text-xl text-vault-danger tabular-nums">
-                {formatted}
+            <div>
+              <h3 style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 14, color: '#555', letterSpacing: '0.05em', margin: 0 }}>
+                Emergency Lock Active
+              </h3>
+              <p style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: '#888', letterSpacing: '0.12em', textTransform: 'uppercase', margin: 0, marginTop: 2 }}>
+                All withdrawals are frozen
               </p>
             </div>
           </div>
-
-          {/* Progress bar */}
-          <div className="mb-5">
-            <div className="h-1.5 bg-vault-surface rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-vault-danger to-vault-danger/50 rounded-full animate-shimmer"
-                style={{ backgroundSize: '200% 100%', width: '100%' }}
-              />
-            </div>
-          </div>
-
-          {/* What's blocked message */}
-          <div className="flex items-start gap-2.5 p-3 bg-vault-danger-glow border border-vault-danger/15 rounded-xl mb-4">
-            <svg className="w-4 h-4 text-vault-danger mt-0.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-            <div className="space-y-1">
-              <p className="text-vault-danger text-[11px] font-body font-medium">
-                No withdrawals can be processed during emergency lock.
-              </p>
-              <p className="text-vault-muted text-[10px] font-body leading-relaxed">
-                Deposits are still allowed. Any pending withdrawal has been automatically cancelled.
-                The vault will unlock automatically when the timer reaches 00:00.
-              </p>
-            </div>
-          </div>
-
-          {/* For demo only — remove in production */}
-          <button
-            onClick={deactivateEmergencyLock}
-            className="w-full py-2.5 text-vault-muted text-[10px] font-body tracking-wider uppercase
-                       border border-dashed border-vault-border/50 rounded-lg
-                       hover:border-vault-muted/40 hover:text-vault-text-dim
-                       transition-all duration-200"
-          >
-            ⚠ Force Unlock (Demo Only)
-          </button>
+          <span style={{
+            padding: '4px 12px',
+            backgroundColor: '#c0c0c0',
+            border: '1px solid #aaa',
+            borderRadius: 20,
+            fontFamily: 'IBM Plex Mono',
+            fontSize: 10,
+            color: '#666',
+            letterSpacing: '0.1em',
+            textTransform: 'uppercase',
+          }}>
+            Locked
+          </span>
         </div>
+
+        {/* Timer */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '16px 0',
+          marginBottom: 16,
+          borderRadius: 12,
+          border: '1px solid #bbb',
+          backgroundColor: '#c8c8c8',
+        }}>
+          <p style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: '#888', letterSpacing: '0.15em', textTransform: 'uppercase', margin: 0, marginBottom: 4 }}>
+            Unlocks In
+          </p>
+          <p style={{ fontFamily: 'Syne', fontWeight: 700, fontSize: 36, color: '#555', letterSpacing: '0.05em', fontVariantNumeric: 'tabular-nums', margin: 0 }}>
+            {formatted}
+          </p>
+        </div>
+
+        {/* Info message */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 8,
+          padding: '10px 12px',
+          backgroundColor: '#c4c4c4',
+          border: '1px solid #b0b0b0',
+          borderRadius: 10,
+        }}>
+          <svg style={{ width: 14, height: 14, color: '#777', marginTop: 1, flexShrink: 0 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <p style={{ fontFamily: 'IBM Plex Mono', fontSize: 10, color: '#666', lineHeight: 1.6, margin: 0 }}>
+            Deposits are still allowed. The vault unlocks automatically when the timer reaches 00:00.
+          </p>
+        </div>
+
+        {/* Force Unlock — demo only */}
+        <button
+          onClick={deactivateEmergencyLock}
+          style={{
+            width: '100%',
+            marginTop: 12,
+            padding: '10px 0',
+            background: 'transparent',
+            border: '1px dashed #b0b0b0',
+            borderRadius: 8,
+            fontFamily: 'IBM Plex Mono',
+            fontSize: 10,
+            color: '#999',
+            letterSpacing: '0.1em',
+            textTransform: 'uppercase',
+            cursor: 'pointer',
+          }}
+        >
+          ⚠ Force Unlock (Demo Only)
+        </button>
       </div>
     )
   }

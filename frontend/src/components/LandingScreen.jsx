@@ -1,19 +1,7 @@
-import React, { useState } from 'react'
-import { useVault } from '../context/VaultContext.jsx'
+import React from 'react'
 import ShieldIcon from './ShieldIcon.jsx'
 
-export default function LandingScreen() {
-  const { connectWallet } = useVault()
-  const [isConnecting, setIsConnecting] = useState(false)
-
-  const handleConnect = async () => {
-    setIsConnecting(true)
-    try {
-      await connectWallet()
-    } finally {
-      setIsConnecting(false)
-    }
-  }
+export default function LandingScreen({ onLaunch }) {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6">
@@ -32,9 +20,9 @@ export default function LandingScreen() {
 
         {/* Title */}
         <div className="space-y-3 animate-fade-up" style={{ animationDelay: '0.1s', opacity: 0 }}>
-          <h1 className="font-display font-800 text-5xl sm:text-6xl tracking-tight text-vault-text leading-none">
-            Lock<span className="text-vault-accent">Fi</span>
-          </h1>
+          <div className="flex justify-center">
+            <img src="/logo.svg" alt="LockFi" className="h-24 w-auto" />
+          </div>
           <div className="flex items-center justify-center gap-2 text-vault-muted font-body text-xs tracking-[0.2em] uppercase">
             <span className="w-8 h-px bg-vault-border" />
             Secure Withdrawal Protocol
@@ -47,41 +35,21 @@ export default function LandingScreen() {
           className="font-body text-sm text-vault-text-dim leading-relaxed max-w-sm mx-auto animate-fade-up"
           style={{ animationDelay: '0.25s', opacity: 0 }}
         >
-          Delay suspicious withdrawals and protect your funds.
+          Delay suspicious withdrawals and protect your funds on Monad.
           <br />
           <span className="text-vault-muted text-xs">
             On-chain risk detection with time-locked execution.
           </span>
         </p>
 
-        {/* Connect button */}
+        {/* Launch App button */}
         <div className="animate-fade-up" style={{ animationDelay: '0.4s', opacity: 0 }}>
           <button
-            onClick={handleConnect}
-            disabled={isConnecting}
-            className="group relative inline-flex items-center gap-3 btn-primary text-base px-10 py-4 rounded-xl"
+            onClick={onLaunch}
+            className="group relative inline-flex items-center gap-2 btn-primary text-sm px-7 py-3 rounded-xl"
           >
-            {/* Animated border glow */}
             <span className="absolute inset-0 rounded-xl animate-pulse-glow" />
-
-            {isConnecting ? (
-              <>
-                <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none">
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" opacity="0.3" />
-                  <path d="M12 2C6.48 2 2 6.48 2 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-                <span>Connecting…</span>
-              </>
-            ) : (
-              <>
-                {/* Wallet icon */}
-                <svg className="w-5 h-5 transition-transform group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
-                  <path d="M1 10h22" />
-                </svg>
-                <span>Connect Wallet</span>
-              </>
-            )}
+            <span>LAUNCH APP</span>
           </button>
         </div>
 
@@ -107,9 +75,12 @@ export default function LandingScreen() {
       </div>
 
       {/* Bottom bar */}
-      <div className="absolute bottom-6 left-0 right-0 text-center">
+      <div className="absolute bottom-6 left-0 right-0 text-center space-y-1">
         <p className="text-vault-muted/40 text-[10px] font-body tracking-widest uppercase">
-          Monad Testnet · Chain ID 10143
+          Monad Testnet
+        </p>
+        <p className="text-vault-muted/40 text-[10px] font-body tracking-widest uppercase">
+          Created by Leticia Azevedo and Shaiane Viana
         </p>
       </div>
     </div>

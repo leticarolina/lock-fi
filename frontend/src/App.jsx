@@ -1,10 +1,15 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useVault } from './context/VaultContext.jsx'
 import LandingScreen from './components/LandingScreen.jsx'
 import Dashboard from './components/Dashboard.jsx'
 
 export default function App() {
   const { isConnected, ready } = useVault()
+  const [showVault, setShowVault] = useState(false)
+  const [forceLanding, setForceLanding] = useState(false)
+
+  const goHome = () => setForceLanding(true)
+  const launch = () => { setShowVault(true); setForceLanding(false) }
 
   return (
     <div className="min-h-screen relative">
@@ -20,7 +25,10 @@ export default function App() {
 
       {/* Content */}
       <div className="relative z-10">
-        {!ready ? null : isConnected ? <Dashboard /> : <LandingScreen />}
+        {!ready ? null : (!forceLanding && (isConnected || showVault))
+          ? <Dashboard onGoHome={goHome} />
+          : <LandingScreen onLaunch={launch} />
+        }
       </div>
     </div>
   )

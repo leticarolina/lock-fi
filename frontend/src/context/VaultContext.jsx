@@ -1,14 +1,19 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react'
 import { usePrivy, useWallets, useLogout } from '@privy-io/react-auth'
+import { ethers } from 'ethers'
+import LockFiABI from '../LockFiABI.json'
 
 const VaultContext = createContext(null)
 
-// Emergency lock duration: 24 hours in production, 2 minutes for demo
-const EMERGENCY_LOCK_DURATION = 120 // seconds (2 min demo — change to 86400 for 24h)
+const CONTRACT_ADDRESS = '0x31b36930BdFe07f4366379De4CFeAEF528Ce8e70'
+const RPC_URL = 'https://testnet-rpc.monad.xyz'
 
-const VAULT_INITIAL_STATE = {
-  vaultBalance: 1.0,
-  instantWithdrawLimit: 0.4,
+const provider = new ethers.JsonRpcProvider(RPC_URL)
+const readContract = new ethers.Contract(CONTRACT_ADDRESS, LockFiABI, provider)
+
+const INITIAL_STATE = {
+  vaultBalance: 0,
+  instantWithdrawLimit: 0,
   pendingWithdrawal: null,
   emergencyLock: null,
   withdrawBlockedPostLock: false,
@@ -19,124 +24,155 @@ export function VaultProvider({ children }) {
   const { logout } = useLogout()
   const { wallets } = useWallets()
 
-  // Pick the best available wallet: embedded first, then any external
-  const activeWallet =
-    wallets.find(w => w.walletClientType === 'privy') ?? wallets[0] ?? null
-
+  const activeWallet = wallets.find(w => w.walletClientType === 'privy') ?? wallets[0] ?? null
   const rawAddress = activeWallet?.address ?? null
   const walletAddress = rawAddress
     ? `${rawAddress.slice(0, 6)}...${rawAddress.slice(-4)}`
     : null
 
   const isConnected = authenticated
+  const [state, setState] = useState(INITIAL_STATE)
+  const pollingRef = useRef(null)
 
-  const [state, setState] = useState(VAULT_INITIAL_STATE)
+  // Get ethers signer from Privy wallet
+  const getSigner = useCallback(async () => {
+    if (!activeWallet) throw new Error('No wallet connected')
+    const ethProvider = await activeWallet.getEthereumProvider()
+    const ethersProvider = new ethers.BrowserProvider(ethProvider)
+    return ethersProvider.getSigner()
+  }, [activeWallet])
 
-  // Reset vault state on logout
-  useEffect(() => {
-    if (!authenticated) {
-      setState(VAULT_INITIAL_STATE)
+  const getSignerContract = useCallback(async () => {
+    const signer = await getSigner()
+    return readContract.connect(signer)
+  }, [getSigner])
+
+  // Fetch user state from contract using getUserState()
+  const fetchUserState = useCallback(async (address) => {
+    if (!address) return
+    try {
+      const userState = await readContract.getUserState(address)
+
+      let pendingWithdrawal = null
+      if (userState.hasPending) {
+        const pending = await readContract.getPendingWithdraw(address)
+        pendingWithdrawal = {
+          amount: parseFloat(ethers.formatEther(pending.amount)),
+          requestedAt: new Date(Number(pending.requestTime) * 1000),
+          unlockTimestamp: new Date(Number(pending.unlockTime) * 1000),
+          unlockDuration: Number(pending.unlockTime) - Number(pending.requestTime),
+        }
+      }
+
+      let emergencyLock = null
+      if (userState.isLocked) {
+        const remainingSeconds = Number(userState.remainingLockTime)
+        const lockDuration = Number(await readContract.LOCK_DURATION())
+        const unlockAt = new Date(Date.now() + remainingSeconds * 1000)
+        emergencyLock = {
+          unlockTimestamp: unlockAt,
+          activatedAt: new Date(unlockAt.getTime() - lockDuration * 1000),
+          duration: lockDuration,
+        }
+      }
+
+      setState({
+        vaultBalance: parseFloat(ethers.formatEther(userState.balance)),
+        instantWithdrawLimit: parseFloat(ethers.formatEther(userState.instantLimit)),
+        pendingWithdrawal,
+        emergencyLock,
+        withdrawBlockedPostLock: false,
+      })
+    } catch (err) {
+      console.error('Failed to fetch user state:', err)
     }
-  }, [authenticated])
+  }, [])
 
-  // Helper: check if emergency lock is currently active
+  // Fetch on wallet connect/change
+  useEffect(() => {
+    if (authenticated && rawAddress) {
+      fetchUserState(rawAddress)
+    } else {
+      setState(INITIAL_STATE)
+    }
+  }, [authenticated, rawAddress, fetchUserState])
+
+  // Poll every 10 seconds
+  useEffect(() => {
+    if (!authenticated || !rawAddress) {
+      if (pollingRef.current) clearInterval(pollingRef.current)
+      return
+    }
+    pollingRef.current = setInterval(() => fetchUserState(rawAddress), 10000)
+    return () => clearInterval(pollingRef.current)
+  }, [authenticated, rawAddress, fetchUserState])
+
+  // Contract event listeners — refetch on any relevant event
+  useEffect(() => {
+    if (!rawAddress) return
+
+    const onEvent = () => fetchUserState(rawAddress)
+
+    readContract.on('Deposited', onEvent)
+    readContract.on('WithdrawalRequested', onEvent)
+    readContract.on('WithdrawalExecuted', onEvent)
+    readContract.on('WithdrawalCancelled', onEvent)
+    readContract.on('EmergencyLockActivated', onEvent)
+
+    return () => {
+      readContract.off('Deposited', onEvent)
+      readContract.off('WithdrawalRequested', onEvent)
+      readContract.off('WithdrawalExecuted', onEvent)
+      readContract.off('WithdrawalCancelled', onEvent)
+      readContract.off('EmergencyLockActivated', onEvent)
+    }
+  }, [rawAddress, fetchUserState])
+
   const isEmergencyLocked = useCallback(() => {
     if (!state.emergencyLock) return false
     return Date.now() < state.emergencyLock.unlockTimestamp.getTime()
   }, [state.emergencyLock])
 
   const connectWallet = useCallback(() => login(), [login])
-
   const disconnectWallet = useCallback(() => logout(), [logout])
 
-  const deposit = useCallback((amount) => {
-    const numAmount = parseFloat(amount)
-    if (isNaN(numAmount) || numAmount <= 0) return
-    setState(prev => {
-      const newBalance = prev.vaultBalance + numAmount
-      return {
-        ...prev,
-        vaultBalance: parseFloat(newBalance.toFixed(6)),
-        instantWithdrawLimit: parseFloat((newBalance * 0.6).toFixed(6)),
-      }
-    })
-  }, [])
+  const deposit = useCallback(async (amount) => {
+    const signerContract = await getSignerContract()
+    const tx = await signerContract.deposit({ value: ethers.parseEther(String(amount)) })
+    await tx.wait()
+    await fetchUserState(rawAddress)
+  }, [getSignerContract, fetchUserState, rawAddress])
 
-  const withdraw = useCallback((amount) => {
-    const numAmount = parseFloat(amount)
-    if (isNaN(numAmount) || numAmount <= 0) return
-    if (isEmergencyLocked()) return
-    if (state.withdrawBlockedPostLock) return
+  const withdraw = useCallback(async (amount) => {
+    const signerContract = await getSignerContract()
+    const tx = await signerContract.withdraw(ethers.parseEther(String(amount)))
+    await tx.wait()
+    await fetchUserState(rawAddress)
+  }, [getSignerContract, fetchUserState, rawAddress])
 
-    const balance = state.vaultBalance
-    if (numAmount > balance) return
+  const executeWithdraw = useCallback(async () => {
+    const signerContract = await getSignerContract()
+    const tx = await signerContract.executeWithdraw()
+    await tx.wait()
+    await fetchUserState(rawAddress)
+  }, [getSignerContract, fetchUserState, rawAddress])
 
-    const isLargeWithdrawal = numAmount > balance * 0.6
+  const cancelWithdraw = useCallback(async () => {
+    const signerContract = await getSignerContract()
+    const tx = await signerContract.cancelWithdraw()
+    await tx.wait()
+    await fetchUserState(rawAddress)
+  }, [getSignerContract, fetchUserState, rawAddress])
 
-    if (isLargeWithdrawal) {
-      const now = new Date()
-      const unlockDuration = 60
-      const unlockTimestamp = new Date(now.getTime() + unlockDuration * 1000)
-      setState(prev => ({
-        ...prev,
-        pendingWithdrawal: { amount: numAmount, requestedAt: now, unlockDuration, unlockTimestamp },
-      }))
-    } else {
-      setState(prev => {
-        const newBalance = prev.vaultBalance - numAmount
-        return {
-          ...prev,
-          vaultBalance: parseFloat(newBalance.toFixed(6)),
-          instantWithdrawLimit: parseFloat((newBalance * 0.6).toFixed(6)),
-        }
-      })
-    }
-  }, [state.vaultBalance, state.withdrawBlockedPostLock, isEmergencyLocked])
+  const activateEmergencyLock = useCallback(async () => {
+    const signerContract = await getSignerContract()
+    const tx = await signerContract.emergencyLock()
+    await tx.wait()
+    await fetchUserState(rawAddress)
+  }, [getSignerContract, fetchUserState, rawAddress])
 
-  const executeWithdraw = useCallback(() => {
-    if (!state.pendingWithdrawal || isEmergencyLocked()) return
-    setState(prev => {
-      const newBalance = Math.max(0, prev.vaultBalance - prev.pendingWithdrawal.amount)
-      return {
-        ...prev,
-        vaultBalance: parseFloat(newBalance.toFixed(6)),
-        instantWithdrawLimit: parseFloat((newBalance * 0.6).toFixed(6)),
-        pendingWithdrawal: null,
-      }
-    })
-  }, [state.pendingWithdrawal, isEmergencyLocked])
-
-  const cancelWithdraw = useCallback(() => {
-    setState(prev => ({ ...prev, pendingWithdrawal: null }))
-  }, [])
-
-  const activateEmergencyLock = useCallback(() => {
-    const now = new Date()
-    const unlockTimestamp = new Date(now.getTime() + EMERGENCY_LOCK_DURATION * 1000)
-    setState(prev => ({
-      ...prev,
-      emergencyLock: { activatedAt: now, unlockTimestamp, duration: EMERGENCY_LOCK_DURATION },
-      pendingWithdrawal: null,
-    }))
-  }, [])
-
-  const deactivateEmergencyLock = useCallback(() => {
-    setState(prev => ({ ...prev, emergencyLock: null, withdrawBlockedPostLock: false }))
-  }, [])
-
-  // Auto-expire emergency lock when timer runs out
-  useEffect(() => {
-    if (!state.emergencyLock) return
-    const msUntilUnlock = state.emergencyLock.unlockTimestamp.getTime() - Date.now()
-    if (msUntilUnlock <= 0) {
-      setState(prev => ({ ...prev, emergencyLock: null, withdrawBlockedPostLock: true }))
-      return
-    }
-    const timer = setTimeout(() => {
-      setState(prev => ({ ...prev, emergencyLock: null, withdrawBlockedPostLock: true }))
-    }, msUntilUnlock)
-    return () => clearTimeout(timer)
-  }, [state.emergencyLock])
+  // Lock expires automatically on-chain; no manual deactivation
+  const deactivateEmergencyLock = useCallback(() => {}, [])
 
   const value = {
     ...state,
@@ -152,6 +188,7 @@ export function VaultProvider({ children }) {
     cancelWithdraw,
     activateEmergencyLock,
     deactivateEmergencyLock,
+    refreshState: () => fetchUserState(rawAddress),
   }
 
   return (

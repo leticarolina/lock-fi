@@ -9,11 +9,14 @@ export default function DepositSection() {
   const handleDeposit = async () => {
     if (!amount || parseFloat(amount) <= 0) return
     setIsLoading(true)
-    // Simulate tx delay
-    await new Promise(r => setTimeout(r, 600))
-    deposit(amount)
-    setAmount('')
-    setIsLoading(false)
+    try {
+      await deposit(amount)
+      setAmount('')
+    } catch (err) {
+      console.error('Deposit failed:', err)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (

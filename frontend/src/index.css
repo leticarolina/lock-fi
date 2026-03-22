@@ -13,8 +13,8 @@ html {
 }
 
 body {
-  background-color: #0a0b0f;
-  color: #e2e4f0;
+  background-color: #f0ede9;
+  color: #111111;
   font-family: 'IBM Plex Mono', monospace;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -26,14 +26,14 @@ body {
   width: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #12131a;
+  background: #e8ddd7;
 }
 ::-webkit-scrollbar-thumb {
-  background: #252836;
+  background: #c9b5aa;
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #363a4f;
+  background: #b09585;
 }
 
 /* Glow input focus */
@@ -45,7 +45,7 @@ input[type="number"] {
 input[type="text"]:focus,
 input[type="number"]:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(0, 229, 160, 0.3);
+  box-shadow: 0 0 0 2px rgba(236, 99, 44, 0.3);
 }
 
 /* Noise texture overlay */
@@ -63,8 +63,8 @@ input[type="number"]:focus {
 /* Grid background */
 .grid-bg {
   background-image:
-    linear-gradient(rgba(37, 40, 54, 0.3) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(37, 40, 54, 0.3) 1px, transparent 1px);
+    linear-gradient(rgba(200, 200, 200, 0.5) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(200, 200, 200, 0.5) 1px, transparent 1px);
   background-size: 48px 48px;
 }
 
@@ -79,33 +79,37 @@ input[type="number"]:focus {
 @layer components {
   .btn-primary {
     @apply relative overflow-hidden px-6 py-3 font-body font-medium text-sm tracking-wider uppercase
-           bg-vault-accent text-vault-bg rounded-lg
-           transition-all duration-200
-           hover:shadow-[0_0_30px_rgba(0,229,160,0.3)]
+           rounded-lg transition-all duration-200
+           hover:shadow-[0_0_30px_rgba(236,99,44,0.3)]
            active:scale-[0.97]
            disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none;
+    background-color: #ec632c;
+    color: #d9e28d;
   }
 
   .btn-secondary {
     @apply px-6 py-3 font-body font-medium text-sm tracking-wider uppercase
-           bg-transparent text-vault-text border border-vault-border rounded-lg
-           transition-all duration-200
-           hover:border-vault-accent hover:text-vault-accent
+           rounded-lg transition-all duration-200
+           hover:shadow-[0_0_30px_rgba(236,99,44,0.3)]
            active:scale-[0.97]
            disabled:opacity-40 disabled:cursor-not-allowed;
+    background-color: #ec632c;
+    color: #d9e28d;
   }
 
   .btn-danger {
     @apply px-6 py-3 font-body font-medium text-sm tracking-wider uppercase
-           bg-transparent text-vault-danger border border-vault-danger/30 rounded-lg
-           transition-all duration-200
-           hover:bg-vault-danger/10 hover:border-vault-danger
+           rounded-lg transition-all duration-200
+           hover:shadow-[0_0_30px_rgba(236,99,44,0.3)]
            active:scale-[0.97];
+    background-color: #ec632c;
+    color: #d9e28d;
   }
 
   .card {
-    @apply bg-vault-card border border-vault-border rounded-2xl p-6
-           backdrop-blur-sm;
+    @apply border rounded-2xl p-6 backdrop-blur-sm;
+    background-color: #efefef;
+    border-color: #d9d9d9;
   }
 
   .input-field {

@@ -8,20 +8,21 @@ export default {
     extend: {
       colors: {
         vault: {
-          bg: '#0a0b0f',
-          surface: '#12131a',
-          card: '#181a24',
-          border: '#252836',
-          accent: '#00e5a0',
-          'accent-dim': '#00c98b',
-          'accent-glow': 'rgba(0, 229, 160, 0.15)',
-          warning: '#f59e0b',
-          'warning-glow': 'rgba(245, 158, 11, 0.15)',
-          danger: '#ef4444',
-          'danger-glow': 'rgba(239, 68, 68, 0.12)',
-          muted: '#6b7294',
-          text: '#e2e4f0',
-          'text-dim': '#9599b3',
+          bg: '#f0ede9',
+          surface: '#efefef',
+          card: '#efefef',
+          border: '#d9d9d9',
+          accent: '#ec632c',
+          'accent-dim': '#d4561f',
+          'accent-glow': 'rgba(236, 99, 44, 0.15)',
+          warning: '#ec632c',
+          'warning-glow': 'rgba(236, 99, 44, 0.15)',
+          green: '#d9e28d',
+          danger: '#ec632c',
+          'danger-glow': 'rgba(236, 99, 44, 0.12)',
+          muted: '#737373',
+          text: '#111111',
+          'text-dim': '#444444',
         }
       },
       fontFamily: {
@@ -38,8 +39,8 @@ export default {
       },
       keyframes: {
         pulseGlow: {
-          '0%, 100%': { boxShadow: '0 0 20px rgba(0, 229, 160, 0.2)' },
-          '50%': { boxShadow: '0 0 40px rgba(0, 229, 160, 0.4)' },
+          '0%, 100%': { boxShadow: '0 0 20px rgba(236, 99, 44, 0.2)' },
+          '50%': { boxShadow: '0 0 40px rgba(236, 99, 44, 0.4)' },
         },
         fadeUp: {
           '0%': { opacity: '0', transform: 'translateY(24px)' },

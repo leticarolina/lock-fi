@@ -7,14 +7,14 @@ import WithdrawSection from './WithdrawSection.jsx'
 import PendingCard from './PendingCard.jsx'
 import EmergencyLockCard from './EmergencyLockCard.jsx'
 
-export default function Dashboard() {
+export default function Dashboard({ onGoHome }) {
   const { pendingWithdrawal, isEmergencyLocked, withdrawBlockedPostLock } = useVault()
   const hasPending = pendingWithdrawal !== null
   const locked = isEmergencyLocked()
 
   return (
     <div className="min-h-screen pb-12">
-      <Header />
+      <Header onGoHome={onGoHome} />
 
       <main className="max-w-2xl mx-auto px-4 sm:px-6 pt-8 space-y-6">
         {/* Vault balance info */}
@@ -44,19 +44,14 @@ export default function Dashboard() {
           <EmergencyLockCard />
         </div>
 
-        {/* Protocol info footer */}
-        <div className="animate-fade-up" style={{ animationDelay: '0.4s', opacity: 0 }}>
-          <div className="text-center pt-4 space-y-2">
-            <div className="flex items-center justify-center gap-3 text-vault-muted/50 text-[10px] font-body tracking-widest uppercase">
-              <span className="w-12 h-px bg-vault-border/40" />
-              Protocol Rules
-              <span className="w-12 h-px bg-vault-border/40" />
-            </div>
-            <p className="text-vault-muted/60 text-[11px] font-body leading-relaxed max-w-md mx-auto">
-              Withdrawals above 60% of your balance are flagged as high-risk and require a time-locked
-              delay before execution. Emergency Lock freezes all withdrawals instantly for 24 hours.
-            </p>
-          </div>
+        {/* Footer */}
+        <div className="animate-fade-up text-center pt-4 space-y-1" style={{ animationDelay: '0.4s', opacity: 0 }}>
+          <p className="text-vault-muted/40 text-[10px] font-body tracking-widest uppercase">
+            Monad Testnet
+          </p>
+          <p className="text-vault-muted/40 text-[10px] font-body tracking-widest uppercase">
+            Created by Leticia Azevedo and Shaiane Viana
+          </p>
         </div>
       </main>
     </div>

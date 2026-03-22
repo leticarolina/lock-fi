@@ -23,16 +23,24 @@ export default function PendingCard() {
   const handleExecute = async () => {
     if (!isComplete) return
     setExecutingAction('execute')
-    await new Promise(r => setTimeout(r, 600))
-    executeWithdraw()
-    setExecutingAction(null)
+    try {
+      await executeWithdraw()
+    } catch (err) {
+      console.error('Execute withdraw failed:', err)
+    } finally {
+      setExecutingAction(null)
+    }
   }
 
   const handleCancel = async () => {
     setExecutingAction('cancel')
-    await new Promise(r => setTimeout(r, 400))
-    cancelWithdraw()
-    setExecutingAction(null)
+    try {
+      await cancelWithdraw()
+    } catch (err) {
+      console.error('Cancel withdraw failed:', err)
+    } finally {
+      setExecutingAction(null)
+    }
   }
 
   return (
