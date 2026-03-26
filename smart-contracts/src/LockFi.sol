@@ -19,13 +19,29 @@ contract LockFi {
     error NoPendingWithdraw();
     error VaultLocked();
 
-    uint256 public constant DELAY = 1 minutes;
-    uint256 public constant LOCK_DURATION = 2 minutes;
+    error SafeAddressNotSet();
+    error InvalidSafeAddress();
+    error SafeAddressAlreadySet();
+    error PendingSafeChangeExists();
+    error NoPendingSafeChange();
+    error SafeChangeDelayNotOver();
+    error PendingWithdrawalExists();
+
+    uint256 public constant DELAY = 1 hours;
+    uint256 public constant LOCK_DURATION = 24 hours;
+    uint256 public constant SAFE_ADDRESS_CHANGE_DELAY = 24 hours;
+    uint256 public constant WINDOW_DURATION_FOR_MAX_WITHDRAW = 72 hours;
+    uint256 public constant MAX_WITHDRAW_PERCENT = 30;
 
     mapping(address => uint256) public balances; //Tracks withdrawable funds (not pending funds)
     mapping(address => WithdrawalRequest) public pendingWithdraw; // Pending withdrawals per user
     mapping(address => uint256) public lastWithdrawPercent; // Tracks last withdrawal %.
     mapping(address => uint256 endTimeout) public lockedUntil; // Tracks until when withdrawal is locked for that user
+    mapping(address => address) public safeAddress; //safe address for each user, can be set by user and used as recovery in case of compromise.
+    mapping(address => address) public pendingSafeAddress; //pending safe address change, only one pending change allowed, requires delay before execution.
+    mapping(address => uint256) public safeChangeUnlockTime; // Tracks when pending safe address change can be executed.
+    mapping(address => uint256) public withdrawnInWindow;
+    mapping(address => uint256) public windowStartTime;
 
     //Pending withdrawal structure, each user can only have ONE pending withdrawal.
     struct WithdrawalRequest {
@@ -45,6 +61,19 @@ contract LockFi {
     event WithdrawalExecuted(address indexed user, uint256 amount);
     event WithdrawalCancelled(address indexed user, uint256 amount);
     event EmergencyLockActivated(address indexed user, uint256 lockedUntil);
+    event SafeAddressSet(address indexed user, address safe);
+    event SafeAddressChangeRequested(
+        address indexed previousSafe,
+        address indexed newSafe,
+        uint256 unlockTime
+    );
+    event SafeAddressChangeConfirmed(address indexed user, address newSafe);
+    event SafeAddressChangeCancelled(address indexed user);
+    event EmergencyWithdrawToSafe(
+        address indexed user,
+        address safe,
+        uint256 amount
+    );
 
     /// DEPOSIT FUNCTION
     /// @notice Deposit ETH into the vault
@@ -118,6 +147,7 @@ contract LockFi {
         balances[msg.sender] -= amount; // Deduct balance
         lastWithdrawPercent[msg.sender] = percent; // Update last withdrawal tracking
 
+        _updateWithdrawWindow(msg.sender, percent);
         _sendEth(msg.sender, amount); // Send ETH
 
         emit WithdrawalExecuted(msg.sender, amount);
@@ -137,6 +167,9 @@ contract LockFi {
 
         delete pendingWithdraw[msg.sender];
 
+        uint256 totalBefore = balances[msg.sender] + executeAmount;
+        uint256 percent = (executeAmount * 100) / totalBefore;
+        _updateWithdrawWindow(msg.sender, percent);
         _sendEth(msg.sender, executeAmount);
 
         emit WithdrawalExecuted(msg.sender, executeAmount);
@@ -185,7 +218,23 @@ contract LockFi {
             isLastWithdrawSmall &&
             isNextWithdrawLarge;
 
-        return largeWithdrawal || suspiciousPattern;
+        // RULE 3: cumulative withdrawals in last 72h > 30% of balance
+        uint256 currentPercent = (amount * 100) / balance;
+        uint256 accumulated = withdrawnInWindow[user];
+        uint256 startTime = windowStartTime[user];
+        bool cumulativeExceeded = false;
+
+        if (startTime != 0) {
+            bool windowActive = block.timestamp <=
+                startTime + WINDOW_DURATION_FOR_MAX_WITHDRAW;
+
+            if (windowActive) {
+                cumulativeExceeded =
+                    accumulated + currentPercent > MAX_WITHDRAW_PERCENT;
+            }
+        }
+
+        return largeWithdrawal || suspiciousPattern || cumulativeExceeded;
     }
 
     //INTERNAL ETH SEND
@@ -195,12 +244,148 @@ contract LockFi {
         require(success, "Transfer failed");
     }
 
+    function _updateWithdrawWindow(address user, uint256 percent) internal {
+        uint256 start = windowStartTime[user];
+
+        // Initialize window if first use
+        if (start == 0) {
+            windowStartTime[user] = block.timestamp;
+
+            withdrawnInWindow[user] = percent;
+
+            return;
+        }
+
+        // Reset window if expired
+        if (block.timestamp > start + WINDOW_DURATION_FOR_MAX_WITHDRAW) {
+            windowStartTime[user] = block.timestamp;
+
+            withdrawnInWindow[user] = percent;
+
+            return;
+        }
+
+        // Otherwise accumulate
+        withdrawnInWindow[user] += percent;
+    }
+
+    /*
+    ============================================================
+                    SAFE ADDRESS MANAGEMENT
+    ============================================================
+    */
+    function setSafeAddress(address _safe) external {
+        if (_safe == address(0)) {
+            revert InvalidSafeAddress();
+        }
+
+        if (safeAddress[msg.sender] != address(0)) {
+            revert SafeAddressAlreadySet();
+        }
+
+        safeAddress[msg.sender] = _safe;
+
+        emit SafeAddressSet(msg.sender, _safe);
+    }
+
+    function requestSafeAddressChange(address _newSafe) external {
+        if (_newSafe == address(0)) {
+            revert InvalidSafeAddress();
+        }
+
+        if (safeAddress[msg.sender] == address(0)) {
+            revert SafeAddressNotSet();
+        }
+
+        if (safeAddress[msg.sender] == _newSafe) {
+            revert SafeAddressAlreadySet();
+        }
+
+        if (_newSafe == msg.sender) {
+            revert InvalidSafeAddress();
+        }
+
+        if (pendingSafeAddress[msg.sender] != address(0)) {
+            revert PendingSafeChangeExists();
+        }
+
+        if (pendingWithdraw[msg.sender].amount != 0) {
+            revert PendingWithdrawalExists();
+        }
+
+        uint256 unlockTime = block.timestamp + SAFE_ADDRESS_CHANGE_DELAY;
+
+        pendingSafeAddress[msg.sender] = _newSafe;
+        safeChangeUnlockTime[msg.sender] = unlockTime;
+
+        emit SafeAddressChangeRequested(
+            safeAddress[msg.sender],
+            _newSafe,
+            unlockTime
+        );
+    }
+
+    function confirmSafeAddressChange() external {
+        address pending = pendingSafeAddress[msg.sender];
+
+        if (pending == address(0)) {
+            revert NoPendingSafeChange();
+        }
+
+        if (block.timestamp < safeChangeUnlockTime[msg.sender]) {
+            revert SafeChangeDelayNotOver();
+        }
+
+        safeAddress[msg.sender] = pending;
+
+        delete pendingSafeAddress[msg.sender];
+        delete safeChangeUnlockTime[msg.sender];
+
+        emit SafeAddressChangeConfirmed(msg.sender, pending);
+    }
+
+    function cancelSafeAddressChange() external {
+        if (pendingSafeAddress[msg.sender] == address(0)) {
+            revert NoPendingSafeChange();
+        }
+
+        delete pendingSafeAddress[msg.sender];
+        delete safeChangeUnlockTime[msg.sender];
+
+        emit SafeAddressChangeCancelled(msg.sender);
+    }
+
+    /// @notice intentionally allowed even during emergencyLock, this provides an emergency recovery path
+    function withdrawToSafe() external {
+        address safe = safeAddress[msg.sender];
+
+        if (safe == address(0)) {
+            revert SafeAddressNotSet();
+        }
+
+        if (pendingWithdraw[msg.sender].amount != 0) {
+            revert PendingWithdrawalExists();
+        }
+
+        uint256 amount = balances[msg.sender];
+
+        if (amount == 0) {
+            revert AmountZero();
+        }
+
+        balances[msg.sender] = 0;
+
+        _updateWithdrawWindow(msg.sender, 100);
+        _sendEth(safe, amount);
+
+        emit EmergencyWithdrawToSafe(msg.sender, safe, amount);
+    }
+
     /*
     ============================================================
                     VIEW HELPERS
     ============================================================
     */
-    /// @notice Returns true if user has pending withdrawal
 
     function getUserVaultBalance(address user) external view returns (uint256) {
         return balances[user];
@@ -301,6 +486,24 @@ contract LockFi {
         if (isLocked) {
             remainingLockTime = lockedUntil[user] - block.timestamp;
         }
+    }
+
+    function getPendingSafeChange(
+        address user
+    ) external view returns (address pendingSafe, uint256 remainingTime) {
+        pendingSafe = pendingSafeAddress[user];
+
+        if (pendingSafe == address(0)) {
+            return (address(0), 0);
+        }
+
+        uint256 unlockTime = safeChangeUnlockTime[user];
+
+        if (block.timestamp >= unlockTime) {
+            return (pendingSafe, 0);
+        }
+
+        remainingTime = unlockTime - block.timestamp;
     }
 
     function totalBalance() external view returns (uint256) {
