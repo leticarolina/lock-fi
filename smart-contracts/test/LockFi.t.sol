@@ -386,6 +386,77 @@ contract LockFiTest is Test {
 
     /*
     ============================================================
+            SUSPICIOUS PATTERN RULE 3
+    ============================================================
+    */
+    function test_cumulativeWithdraw_triggersDelay()
+        public
+        deposited(leti, 1 ether)
+    {
+        vm.startPrank(leti);
+
+        vault.withdraw(0.1 ether);
+        vault.withdraw(0.1 ether);
+        vault.withdraw(0.1 ether);
+
+        vm.expectRevert(LockFi.PendingWithdrawExists.selector);
+
+        vault.withdraw(0.1 ether);
+
+        vm.stopPrank();
+    }
+
+    function test_window_resets_afterDuration()
+        public
+        deposited(leti, 1 ether)
+    {
+        vm.startPrank(leti);
+
+        vault.withdraw(0.3 ether);
+
+        vm.warp(block.timestamp + 72 hours);
+
+        vault.withdraw(0.3 ether);
+
+        vm.stopPrank();
+    }
+
+    function test_cancel_doesNotIncreaseWindow()
+        public
+        deposited(leti, 1 ether)
+    {
+        vm.startPrank(leti);
+
+        vault.withdraw(0.8 ether);
+
+        vault.cancelWithdraw();
+
+        vault.withdraw(0.3 ether);
+
+        vm.stopPrank();
+    }
+
+    function test_cumulativeRule_becomesTrue() public deposited(leti, 1 ether) {
+        vm.startPrank(leti);
+
+        // 10%
+        vault.withdraw(0.1 ether);
+
+        // 15%
+        vault.withdraw(0.15 ether);
+
+        // Next 10% should trigger pending
+        vault.withdraw(0.1 ether);
+
+        bool hasPending = vault.hasPendingWithdraw(leti);
+
+        assertTrue(hasPending);
+
+        vm.stopPrank();
+    }
+
+    /*
+    ============================================================
                 SAFE ADDRESS TESTS
     ============================================================
     */
