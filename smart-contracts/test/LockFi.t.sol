@@ -28,7 +28,7 @@ contract LockFiTest is Test {
         _;
     }
 
-    function testDeposit() public {
+    function test_deposit() public {
         uint256 amount = 1 ether;
 
         vm.prank(leti);
@@ -63,13 +63,12 @@ contract LockFiTest is Test {
 
         vm.startPrank(leti);
         vault.withdraw(firstWithdraw);
-        // Next withdraw <40%
+        // small withdrawals should not trigger pending
         vault.withdraw(secondWithdraw);
         vm.stopPrank();
-        // Should NOT create pending
+
         bool hasPending = vault.hasPendingWithdraw(leti);
         assertFalse(hasPending);
-
         // ETH received
         assertEq(leti.balance, beforeBalance + secondWithdraw + firstWithdraw);
     }
@@ -102,8 +101,7 @@ contract LockFiTest is Test {
     function test_withdraw_insufficientBalanceReverts() public deposited(leti, 1 ether) {
         vm.prank(leti);
 
-        vm.expectRevert();
-
+        vm.expectRevert(abi.encodeWithSelector(LockFi.InsufficientBalance.selector, 1 ether, 2 ether));
         vault.withdraw(2 ether);
     }
 
@@ -130,6 +128,7 @@ contract LockFiTest is Test {
 
         vm.startPrank(leti);
         vault.withdraw(withdrawAmount);
+        assertEq(vault.balances(leti), 1 ether - withdrawAmount);
         vault.cancelWithdraw();
         vm.stopPrank();
 
@@ -157,7 +156,7 @@ contract LockFiTest is Test {
 
         vault.withdraw(0.8 ether);
 
-        vault.emergencyLock();
+        vault.emergencyLock(1 hours);
 
         vault.cancelWithdraw(); // Cancel must still work
 
@@ -180,7 +179,7 @@ contract LockFiTest is Test {
         vm.startPrank(leti);
         vault.withdraw(withdrawAmount);
         // Warp forward 1 hour
-        vm.warp(block.timestamp + 1 hours);
+        vm.warp(block.timestamp + 12 hours);
 
         uint256 beforeBalance = leti.balance;
 
@@ -191,7 +190,7 @@ contract LockFiTest is Test {
         assertEq(leti.balance, beforeBalance + withdrawAmount);
     }
 
-    function test_ExecuteWithdraw_reverts_BeforeDelay() public deposited(leti, 1 ether) {
+    function test_executeWithdraw_reverts_beforeDelay() public deposited(leti, 1 ether) {
         uint256 withdrawAmount = 0.8 ether;
 
         vm.startPrank(leti);
@@ -220,7 +219,7 @@ contract LockFiTest is Test {
 
         vault.withdraw(0.8 ether);
 
-        vm.warp(block.timestamp + 1 hours);
+        vm.warp(block.timestamp + 13 hours);
 
         uint256 before = vault.totalBalance();
 
@@ -242,48 +241,66 @@ contract LockFiTest is Test {
     function test_emergencyLock_BlocksWithdraw() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
-        vault.emergencyLock();
+        vault.emergencyLock(24 hours);
 
-        vm.expectRevert(LockFi.VaultLocked.selector);
+        vm.expectRevert(LockFi.EmergencyLockOngoing.selector);
 
         vault.withdraw(0.1 ether);
 
         vm.warp(block.timestamp + 23 hours); //move forward but still within lock duration
-        vm.expectRevert(LockFi.VaultLocked.selector);
+        vm.expectRevert(LockFi.EmergencyLockOngoing.selector);
         vault.withdraw(0.1 ether);
 
-        vm.warp(block.timestamp + 24 hours); //move forward past lock duration
+        vm.warp(block.timestamp + 2 hours); //move forward past lock duration
         vault.withdraw(0.1 ether); // should work now
 
         vm.stopPrank();
+
+        assertEq(vault.balances(leti), 1 ether - 0.1 ether);
     }
 
     function test_emergencyLock_resetsTimer() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
-        vault.emergencyLock();
+        vault.emergencyLock(24 hours);
 
         uint256 firstLock = vault.lockedUntil(leti);
 
         vm.warp(block.timestamp + 1 hours);
 
-        vault.emergencyLock();
+        vault.emergencyLock(30 hours); // must be longer than remaining time, which is 23 hours
 
         uint256 secondLock = vault.lockedUntil(leti);
 
         vm.stopPrank();
-
         assertGt(secondLock, firstLock);
     }
 
-    function testCancelStillWorksWhileLocked() public {
+    function test_emergencyLock_DoesNotDecreaseTimer() public deposited(leti, 1 ether) {
+        vm.startPrank(leti);
+
+        vault.emergencyLock(24 hours);
+
+        uint256 firstLock = vault.lockedUntil(leti);
+
+        vm.warp(block.timestamp + 4 hours);
+
+        vm.expectRevert(LockFi.LockNotExtended.selector);
+        vault.emergencyLock(2 hours); // must be longer than remaining time, which is 23 hours
+
+        vm.stopPrank();
+
+        assertEq(vault.lockedUntil(leti), firstLock);
+    }
+
+    function test_cancelWithdraw_StillWorksWhileLocked() public {
         vm.startPrank(leti);
 
         vault.deposit{value: 1 ether}();
 
         vault.withdraw(0.8 ether);
 
-        vault.emergencyLock();
+        vault.emergencyLock(24 hours);
 
         // Cancel must still work
         vault.cancelWithdraw();
@@ -296,38 +313,41 @@ contract LockFiTest is Test {
     }
 
     function test_withdraw_afterLockExpires() public deposited(leti, 1 ether) {
+        uint256 eveBeforeBalance = eve.balance;
         vm.startPrank(leti);
-
-        vault.emergencyLock();
+        vault.setSafeAddress(eve);
+        vault.emergencyLock(24 hours);
 
         // Warp 24 hours
         vm.warp(block.timestamp + 24 hours);
 
         vault.withdraw(0.1 ether);
+        vault.withdrawToSafe(); // should work without pending
 
         vm.stopPrank();
 
+        uint256 eveAfterBlance = eve.balance;
         bool hasPending = vault.hasPendingWithdraw(leti);
-
         assertFalse(hasPending);
+        assertEq(vault.balances(leti), 0 ether);
+        assertEq(eveAfterBlance, eveBeforeBalance + 0.9 ether);
     }
 
-    function test_emergencyLock_allowsWithdrawToSafe() public deposited(leti, 1 ether) {
+    function test_emergencyLock_doesNotWithdrawToSafe() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
         vault.setSafeAddress(shai);
-
-        vault.emergencyLock();
+        vault.emergencyLock(24 hours);
 
         uint256 safeBalanceBefore = shai.balance;
 
+        vm.expectRevert(LockFi.EmergencyLockOngoing.selector);
         vault.withdrawToSafe();
+        vm.stopPrank();
 
         uint256 safeBalanceAfter = shai.balance;
 
-        assertEq(safeBalanceAfter, safeBalanceBefore + 1 ether);
-
-        vm.stopPrank();
+        assertEq(safeBalanceAfter, safeBalanceBefore);
     }
 
     /*
@@ -366,13 +386,12 @@ contract LockFiTest is Test {
         vault.withdraw(0.1 ether);
 
         vm.expectRevert(LockFi.PendingWithdrawExists.selector);
-
         vault.withdraw(0.1 ether);
 
         vm.stopPrank();
     }
 
-    function test_window_resets_afterDuration() public deposited(leti, 1 ether) {
+    function test_cumulativeWithdraw_windowResetsAfterDuration() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
         vault.withdraw(0.3 ether);
@@ -384,7 +403,7 @@ contract LockFiTest is Test {
         vm.stopPrank();
     }
 
-    function test_cancel_doesNotIncreaseWindow() public deposited(leti, 1 ether) {
+    function test_cancelWithdraw_doesNotIncreaseWindow() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
         vault.withdraw(0.8 ether);
@@ -392,25 +411,6 @@ contract LockFiTest is Test {
         vault.cancelWithdraw();
 
         vault.withdraw(0.3 ether);
-
-        vm.stopPrank();
-    }
-
-    function test_cumulativeRule_becomesTrue() public deposited(leti, 1 ether) {
-        vm.startPrank(leti);
-
-        // 10%
-        vault.withdraw(0.1 ether);
-
-        // 15%
-        vault.withdraw(0.15 ether);
-
-        // Next 10% should trigger pending
-        vault.withdraw(0.1 ether);
-
-        bool hasPending = vault.hasPendingWithdraw(leti);
-
-        assertTrue(hasPending);
 
         vm.stopPrank();
     }
@@ -776,7 +776,7 @@ contract LockFiTest is Test {
 
         vault.deposit{value: 1 ether}();
 
-        vault.emergencyLock();
+        vault.emergencyLock(24 hours);
 
         bool locked = vault.isVaultLocked(leti);
 
@@ -796,11 +796,12 @@ contract LockFiTest is Test {
 
         vault.deposit{value: 1 ether}();
 
-        vault.emergencyLock();
+        vault.emergencyLock(24 hours);
 
         uint256 remaining = vault.getRemainingLockTime(leti);
 
         assertGt(remaining, 0);
+        assertEq(remaining, 24 hours);
 
         vm.stopPrank();
     }

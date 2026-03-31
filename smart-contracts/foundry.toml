@@ -2,9 +2,10 @@
 src = "src"
 out = "out"
 libs = ["lib"]
-metadata = true
-metadata_hash = "none"  # disable ipfs
+bytecode_hash = "none" # do not include metadata hash in bytecode (for deterministic deployments)
 use_literal_content = true # use source code
+remappings = ["@openzeppelin/=lib/openzeppelin-contracts/"]
+
 
 # Monad Configuration
 eth_rpc_url="https://testnet-rpc.monad.xyz"

@@ -8,7 +8,8 @@ Em vez de permitir que grandes valores saiam instantaneamente, o LockFi cria um 
 
 Projeto desenvolvido para o **Monad Hackathon**.
 
-Smart Contract: [LockFi.sol](https://testnet.monadscan.com/address/0x31b36930BdFe07f4366379De4CFeAEF528Ce8e70)
+- **Smart Contract:** [`LockFi.sol`](https://testnet.monadscan.com/address/0x31b36930BdFe07f4366379De4CFeAEF528Ce8e70)
+- **Site:** [LockFi DApp](https://lockfi.vercel.app/)
 
 ---
 
