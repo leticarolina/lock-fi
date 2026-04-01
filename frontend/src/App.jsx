@@ -11,17 +11,20 @@ export default function App() {
   const goHome = () => setForceLanding(true)
   const launch = () => { setShowVault(true); setForceLanding(false) }
 
+  const isLanding = !ready || forceLanding || (!isConnected && !showVault)
+
   return (
     <div className="min-h-screen relative">
-      {/* Noise overlay */}
-      <div className="noise-overlay" />
-
-      {/* Gradient blobs */}
-      <div className="gradient-blob w-[600px] h-[600px] bg-vault-accent/5 top-[-200px] left-[-200px] fixed" />
-      <div className="gradient-blob w-[500px] h-[500px] bg-vault-accent/3 bottom-[-150px] right-[-150px] fixed" />
-
-      {/* Grid background */}
-      <div className="fixed inset-0 grid-bg opacity-40 pointer-events-none" />
+      {!isLanding && (
+        <>
+          <div className="noise-overlay" />
+          <div className="fixed inset-0 grid-bg pointer-events-none" />
+          <div className="gradient-blob w-[500px] h-[500px] top-[-150px] left-[-150px] fixed"
+            style={{ background: 'rgba(255,107,43,0.04)' }} />
+          <div className="gradient-blob w-[400px] h-[400px] bottom-[-100px] right-[-100px] fixed"
+            style={{ background: 'rgba(202,255,0,0.03)' }} />
+        </>
+      )}
 
       {/* Content */}
       <div className="relative z-10">

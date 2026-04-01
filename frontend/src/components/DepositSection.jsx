@@ -21,16 +21,9 @@ export default function DepositSection() {
 
   return (
     <div className="card h-full flex flex-col">
-      <div className="flex items-center gap-2 mb-4">
-        <div className="w-8 h-8 rounded-lg bg-vault-accent/10 flex items-center justify-center">
-          <svg className="w-4 h-4 text-vault-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <polyline points="19 12 12 19 5 12" />
-          </svg>
-        </div>
-        <h3 className="font-display font-600 text-sm text-vault-text tracking-wide">
-          Deposit MON
-        </h3>
+      <div className="mb-5">
+        <p className="font-body text-[10px] tracking-[0.2em] uppercase mb-1" style={{ color: '#FF6B2B' }}>// Action</p>
+        <h3 className="font-display text-lg text-vault-text tracking-tight">Deposit MON</h3>
       </div>
 
       <div className="flex-1 flex flex-col justify-between gap-4">

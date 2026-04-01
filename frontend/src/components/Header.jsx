@@ -7,17 +7,15 @@ export default function Header({ onGoHome }) {
 
 
   return (
-    <header className="border-b border-vault-border/50 bg-vault-bg/80 backdrop-blur-xl sticky top-0 z-50">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+    <header className="border-b border-vault-border/60 backdrop-blur-xl sticky top-0 z-50" style={{ background: 'rgba(10,10,10,0.85)' }}>
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
         {/* Logo */}
-        <div className="flex items-center gap-3">
-          <img
-            src="/logo.svg"
-            alt="LockFi"
-            className="h-10 w-auto cursor-pointer"
-            onClick={onGoHome}
-          />
-        </div>
+        <img src="/logo_nova.svg" alt="LockFi" className="h-9 w-auto cursor-pointer flex-shrink-0" onClick={onGoHome} />
+
+        {/* Center tag */}
+        <span className="hidden sm:block font-body text-[10px] tracking-[0.3em] uppercase flex-1 text-center" style={{ color: '#333' }}>
+          Secure Withdrawal Protocol
+        </span>
 
         {/* Wallet info */}
         <div className="flex items-center gap-3">
@@ -49,7 +47,7 @@ export default function Header({ onGoHome }) {
           ) : (
             <button
               onClick={connectWallet}
-              className="btn-primary text-xs px-4 py-2 rounded-lg"
+              className="btn-primary text-xs px-4 py-2"
             >
               Connect Wallet
             </button>

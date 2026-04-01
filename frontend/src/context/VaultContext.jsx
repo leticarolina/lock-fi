@@ -11,6 +11,33 @@ const RPC_URL = 'https://testnet-rpc.monad.xyz'
 const provider = new ethers.JsonRpcProvider(RPC_URL)
 const readContract = new ethers.Contract(CONTRACT_ADDRESS, LockFiABI, provider)
 
+// Safe address delay: 2 min for demo (24h = 86400 in production)
+const SAFE_ADDRESS_DELAY = 2 * 60
+
+function loadSafeAddressState() {
+  try {
+    const raw = localStorage.getItem('lockfi_safe_address')
+    if (!raw) return { safeAddress: null, pendingSafeAddress: null }
+    const parsed = JSON.parse(raw)
+    return {
+      safeAddress: parsed.safeAddress ?? null,
+      pendingSafeAddress: parsed.pendingSafeAddress
+        ? {
+            ...parsed.pendingSafeAddress,
+            requestedAt: new Date(parsed.pendingSafeAddress.requestedAt),
+            unlockTimestamp: new Date(parsed.pendingSafeAddress.unlockTimestamp),
+          }
+        : null,
+    }
+  } catch {
+    return { safeAddress: null, pendingSafeAddress: null }
+  }
+}
+
+function saveSafeAddressState(safeAddress, pendingSafeAddress) {
+  localStorage.setItem('lockfi_safe_address', JSON.stringify({ safeAddress, pendingSafeAddress }))
+}
+
 const INITIAL_STATE = {
   vaultBalance: 0,
   instantWithdrawLimit: 0,
@@ -33,6 +60,9 @@ export function VaultProvider({ children }) {
   const isConnected = authenticated
   const [state, setState] = useState(INITIAL_STATE)
   const pollingRef = useRef(null)
+
+  const [safeAddress, setSafeAddress] = useState(() => loadSafeAddressState().safeAddress)
+  const [pendingSafeAddress, setPendingSafeAddress] = useState(() => loadSafeAddressState().pendingSafeAddress)
 
   // Get ethers signer from Privy wallet
   const getSigner = useCallback(async () => {
@@ -174,6 +204,44 @@ export function VaultProvider({ children }) {
   // Lock expires automatically on-chain; no manual deactivation
   const deactivateEmergencyLock = useCallback(() => {}, [])
 
+  // Safe address — managed locally (contract integration pending)
+  const requestSafeAddress = useCallback(async (address) => {
+    const now = Date.now()
+    const pending = {
+      address,
+      requestedAt: new Date(now),
+      unlockTimestamp: new Date(now + SAFE_ADDRESS_DELAY * 1000),
+      unlockDuration: SAFE_ADDRESS_DELAY,
+    }
+    setPendingSafeAddress(pending)
+    saveSafeAddressState(safeAddress, pending)
+    // TODO: await signerContract.requestSafeAddress(address) when contract supports it
+  }, [safeAddress])
+
+  const confirmSafeAddress = useCallback(async () => {
+    if (!pendingSafeAddress) return
+    // TODO: await signerContract.confirmSafeAddress() when contract supports it
+    setSafeAddress(pendingSafeAddress.address)
+    setPendingSafeAddress(null)
+    saveSafeAddressState(pendingSafeAddress.address, null)
+  }, [pendingSafeAddress])
+
+  const cancelSafeAddressChange = useCallback(async () => {
+    // TODO: await signerContract.cancelSafeAddressChange() when contract supports it
+    setPendingSafeAddress(null)
+    saveSafeAddressState(safeAddress, null)
+  }, [safeAddress])
+
+  const withdrawToSafeAddress = useCallback(async () => {
+    if (!safeAddress) return
+    // TODO: await signerContract.withdrawToSafeAddress() when contract supports it
+    // For now, withdraws full balance via existing withdraw function
+    const signerContract = await getSignerContract()
+    const tx = await signerContract.withdraw(ethers.parseEther(String(state.vaultBalance)))
+    await tx.wait()
+    await fetchUserState(rawAddress)
+  }, [safeAddress, getSignerContract, fetchUserState, rawAddress, state.vaultBalance])
+
   const value = {
     ...state,
     isConnected,
@@ -188,6 +256,12 @@ export function VaultProvider({ children }) {
     cancelWithdraw,
     activateEmergencyLock,
     deactivateEmergencyLock,
+    safeAddress,
+    pendingSafeAddress,
+    requestSafeAddress,
+    confirmSafeAddress,
+    cancelSafeAddressChange,
+    withdrawToSafeAddress,
     refreshState: () => fetchUserState(rawAddress),
   }
 

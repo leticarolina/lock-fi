@@ -27,45 +27,25 @@ export default function WithdrawSection({ disabled, emergencyLocked, postLockBlo
 
   if (emergencyLocked) {
     return (
-      <div style={{
-        backgroundColor: '#d4d4d4',
-        borderColor: '#b8b8b8',
-        borderWidth: 1,
-        borderStyle: 'solid',
-        borderRadius: 16,
-        padding: 24,
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: 10,
-        opacity: 0.85,
-        pointerEvents: 'none',
-      }}>
-        <div style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: '#b8b8b8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg style={{ width: 20, height: 20, color: '#666' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <div className="card h-full flex flex-col justify-center items-center gap-3 pointer-events-none" style={{ opacity: 0.7 }}>
+        <div style={{ width: 40, height: 40, borderRadius: 4, backgroundColor: 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <svg style={{ width: 20, height: 20, color: '#ef4444' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
             <path d="M7 11V7a5 5 0 0 1 10 0v4" />
           </svg>
         </div>
-        <p style={{ color: '#666', fontSize: 10, fontFamily: 'IBM Plex Mono', letterSpacing: '0.12em', textTransform: 'uppercase', textAlign: 'center', margin: 0 }}>
-          Withdrawals Frozen
+        <p style={{ color: '#ef4444', fontSize: 10, fontFamily: 'Space Mono', letterSpacing: '0.15em', textTransform: 'uppercase', textAlign: 'center', margin: 0 }}>
+          // Withdrawals Frozen
         </p>
         <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          padding: '12px 24px',
-          backgroundColor: '#c8c8c8',
-          borderRadius: 10,
-          border: '1px solid #bbb',
-          marginTop: 4,
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          padding: '12px 24px', backgroundColor: '#0d0d0d',
+          border: '1px solid #2a2a2a', marginTop: 4,
         }}>
-          <p style={{ color: '#888', fontSize: 10, fontFamily: 'IBM Plex Mono', letterSpacing: '0.12em', textTransform: 'uppercase', margin: 0, marginBottom: 2 }}>
+          <p style={{ color: '#555', fontSize: 10, fontFamily: 'Space Mono', letterSpacing: '0.15em', textTransform: 'uppercase', margin: 0, marginBottom: 4 }}>
             Unlocks In
           </p>
-          <p style={{ color: '#555', fontSize: 28, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.05em', fontVariantNumeric: 'tabular-nums', margin: 0 }}>
+          <p style={{ color: '#ef4444', fontSize: 28, fontFamily: 'Archivo Black', letterSpacing: '0.05em', fontVariantNumeric: 'tabular-nums', margin: 0 }}>
             {formatted}
           </p>
         </div>
@@ -75,28 +55,12 @@ export default function WithdrawSection({ disabled, emergencyLocked, postLockBlo
 
   return (
     <div
-      style={{
-        backgroundColor: disabled ? '#d8d8d8' : '#efefef',
-        borderColor: '#d9d9d9',
-        borderWidth: 1,
-        borderStyle: 'solid',
-        borderRadius: 16,
-        padding: 24,
-        opacity: disabled ? 0.6 : 1,
-        pointerEvents: disabled ? 'none' : 'auto',
-      }}
-      className="h-full flex flex-col transition-all duration-300"
+      className="card h-full flex flex-col transition-all duration-300"
+      style={{ opacity: disabled ? 0.5 : 1, pointerEvents: disabled ? 'none' : 'auto' }}
     >
-      <div className="flex items-center gap-2 mb-4">
-        <div className="w-8 h-8 rounded-lg bg-vault-accent/10 flex items-center justify-center">
-          <svg className="w-4 h-4 text-vault-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="12" y1="19" x2="12" y2="5" />
-            <polyline points="5 12 12 5 19 12" />
-          </svg>
-        </div>
-        <h3 className="font-display font-600 text-sm text-vault-text tracking-wide">
-          Withdraw MON
-        </h3>
+      <div className="mb-5">
+        <p className="font-body text-[10px] tracking-[0.2em] uppercase mb-1" style={{ color: '#FF6B2B' }}>// Action</p>
+        <h3 className="font-display text-lg text-vault-text tracking-tight">Withdraw MON</h3>
       </div>
 
       <div className="flex-1 flex flex-col justify-between gap-4">
@@ -146,7 +110,7 @@ export default function WithdrawSection({ disabled, emergencyLocked, postLockBlo
         <button
           onClick={handleWithdraw}
           disabled={disabled || !amount || numAmount <= 0 || isOverBalance || isLoading}
-          className="btn-secondary w-full flex items-center justify-center gap-2"
+          className="btn-primary w-full flex items-center justify-center gap-2"
         >
           {isLoading ? (
             <>

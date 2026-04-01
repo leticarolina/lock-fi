@@ -6,11 +6,14 @@ import DepositSection from './DepositSection.jsx'
 import WithdrawSection from './WithdrawSection.jsx'
 import PendingCard from './PendingCard.jsx'
 import EmergencyLockCard from './EmergencyLockCard.jsx'
+import SafeAddressCard from './SafeAddressCard.jsx'
+import PendingSafeAddressCard from './PendingSafeAddressCard.jsx'
 
 export default function Dashboard({ onGoHome }) {
-  const { pendingWithdrawal, isEmergencyLocked, withdrawBlockedPostLock } = useVault()
+  const { pendingWithdrawal, isEmergencyLocked, withdrawBlockedPostLock, pendingSafeAddress } = useVault()
   const hasPending = pendingWithdrawal !== null
   const locked = isEmergencyLocked()
+  const hasPendingSafe = pendingSafeAddress !== null
 
   return (
     <div className="min-h-screen pb-12">
@@ -44,15 +47,40 @@ export default function Dashboard({ onGoHome }) {
           <EmergencyLockCard />
         </div>
 
-        {/* Footer */}
-        <div className="animate-fade-up text-center pt-4 space-y-1" style={{ animationDelay: '0.4s', opacity: 0 }}>
-          <p className="text-vault-muted/40 text-[10px] font-body tracking-widest uppercase">
-            Monad Testnet
-          </p>
-          <p className="text-vault-muted/40 text-[10px] font-body tracking-widest uppercase">
-            Created by Leticia Azevedo and Shaiane Viana
-          </p>
+        {/* Pending safe address card */}
+        {hasPendingSafe && (
+          <div className="animate-fade-up" style={{ animationDelay: '0.4s', opacity: 0 }}>
+            <PendingSafeAddressCard />
+          </div>
+        )}
+
+        {/* Safe Address section */}
+        <div className="animate-fade-up" style={{ animationDelay: '0.45s', opacity: 0 }}>
+          <SafeAddressCard />
         </div>
+
+        {/* Footer */}
+        <footer className="animate-fade-up" style={{
+          animationDelay: '0.55s', opacity: 0,
+          borderTop: '1px solid #222',
+          marginTop: 16,
+          padding: '20px 0',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 12,
+        }}>
+          <span style={{ fontSize: '0.6rem', letterSpacing: '2px', color: '#555', textTransform: 'uppercase', fontFamily: "'Space Mono', monospace" }}>
+            © 2026 LockFi Protocol
+          </span>
+          <span style={{ color: '#CAFF00', fontSize: '0.65rem', letterSpacing: '3px', fontFamily: "'Space Mono', monospace" }}>
+            ◆ Built on Monad
+          </span>
+          <span style={{ fontSize: '0.6rem', letterSpacing: '2px', color: '#555', textTransform: 'uppercase', fontFamily: "'Space Mono', monospace" }}>
+            Leticia Azevedo &amp; Shaiane Viana
+          </span>
+        </footer>
       </main>
     </div>
   )

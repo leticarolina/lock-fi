@@ -2,31 +2,27 @@ import React, { useState } from 'react'
 import { useVault } from '../context/VaultContext.jsx'
 import { useCountdown } from '../hooks/useCountdown.js'
 
-export default function PendingCard() {
-  const { pendingWithdrawal, executeWithdraw, cancelWithdraw } = useVault()
-  const { formatted, isComplete, secondsLeft } = useCountdown(pendingWithdrawal?.unlockTimestamp)
-  const [executingAction, setExecutingAction] = useState(null) // 'execute' | 'cancel'
+export default function PendingSafeAddressCard() {
+  const { pendingSafeAddress, confirmSafeAddress, cancelSafeAddressChange } = useVault()
+  const { formatted, isComplete, secondsLeft } = useCountdown(pendingSafeAddress?.unlockTimestamp)
+  const [executingAction, setExecutingAction] = useState(null) // 'confirm' | 'cancel'
 
-  if (!pendingWithdrawal) return null
+  if (!pendingSafeAddress) return null
 
-  const requestedDate = pendingWithdrawal.requestedAt.toLocaleDateString('en-US', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
+  const requestedDate = pendingSafeAddress.requestedAt.toLocaleDateString('en-US', {
+    day: 'numeric', month: 'long', year: 'numeric',
   })
-  const requestedTime = pendingWithdrawal.requestedAt.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true,
+  const requestedTime = pendingSafeAddress.requestedAt.toLocaleTimeString('en-US', {
+    hour: '2-digit', minute: '2-digit', hour12: true,
   })
 
-  const handleExecute = async () => {
+  const handleConfirm = async () => {
     if (!isComplete) return
-    setExecutingAction('execute')
+    setExecutingAction('confirm')
     try {
-      await executeWithdraw()
+      await confirmSafeAddress()
     } catch (err) {
-      console.error('Execute withdraw failed:', err)
+      console.error('confirmSafeAddress failed:', err)
     } finally {
       setExecutingAction(null)
     }
@@ -35,9 +31,9 @@ export default function PendingCard() {
   const handleCancel = async () => {
     setExecutingAction('cancel')
     try {
-      await cancelWithdraw()
+      await cancelSafeAddressChange()
     } catch (err) {
-      console.error('Cancel withdraw failed:', err)
+      console.error('cancelSafeAddressChange failed:', err)
     } finally {
       setExecutingAction(null)
     }
@@ -45,7 +41,6 @@ export default function PendingCard() {
 
   return (
     <div className="relative rounded-2xl overflow-hidden">
-      {/* Warning border glow */}
       <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-vault-warning/20 via-transparent to-transparent pointer-events-none" />
 
       <div className="card border-vault-warning/25 relative">
@@ -53,13 +48,12 @@ export default function PendingCard() {
         <div className="flex items-center justify-between mb-5">
           <div>
             <p className="font-body text-[10px] tracking-[0.2em] uppercase mb-1" style={{ color: '#f59e0b' }}>// Pending</p>
-            <h3 className="font-display text-lg text-vault-text tracking-tight">Withdrawal</h3>
+            <h3 className="font-display text-lg text-vault-text tracking-tight">Safe Address</h3>
             <p className="text-vault-muted text-[10px] font-body tracking-wider uppercase mt-0.5">
               Time-locked for security
             </p>
           </div>
 
-          {/* Status badge */}
           {isComplete ? (
             <span className="px-3 py-1 bg-vault-accent/10 border border-vault-accent/30 rounded-full text-vault-accent text-[10px] font-body tracking-wider uppercase">
               Ready
@@ -72,58 +66,36 @@ export default function PendingCard() {
         </div>
 
         {/* Info grid */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          {/* Date */}
+        <div className="grid grid-cols-2 gap-4 mb-4">
           <div className="space-y-1">
-            <p className="text-vault-muted text-[10px] font-body tracking-[0.12em] uppercase">
-              Date Requested
-            </p>
-            <p className="font-body text-xs text-vault-text-dim">
-              {requestedDate}
-            </p>
-            <p className="font-body text-[11px] text-vault-muted">
-              {requestedTime}
-            </p>
+            <p className="text-vault-muted text-[10px] font-body tracking-[0.12em] uppercase">Date Requested</p>
+            <p className="font-body text-xs text-vault-text-dim">{requestedDate}</p>
+            <p className="font-body text-[11px] text-vault-muted">{requestedTime}</p>
           </div>
-
-          {/* Amount */}
           <div className="space-y-1">
-            <p className="text-vault-muted text-[10px] font-body tracking-[0.12em] uppercase">
-              Amount
-            </p>
-            <p className="font-display tabular-nums" style={{ fontSize: '1.8rem', letterSpacing: '-1px', color: '#E8E8E8' }}>
-              {pendingWithdrawal.amount.toFixed(2)}
-            </p>
-            <p className="font-body text-[11px] text-vault-accent">MON</p>
-          </div>
-
-          {/* Timer */}
-          <div className="space-y-1">
-            <p className="text-vault-muted text-[10px] font-body tracking-[0.12em] uppercase">
-              Unlocks In
-            </p>
+            <p className="text-vault-muted text-[10px] font-body tracking-[0.12em] uppercase">Unlocks In</p>
             <p className="font-display tabular-nums" style={{ fontSize: '1.8rem', letterSpacing: '-1px', color: isComplete ? '#CAFF00' : '#f59e0b' }}>
               {isComplete ? '00:00' : formatted}
             </p>
-            <p className="font-body text-[11px] text-vault-muted">
-              {isComplete ? 'Unlocked' : 'Remaining'}
-            </p>
+            <p className="font-body text-[11px] text-vault-muted">{isComplete ? 'Unlocked' : 'Remaining'}</p>
           </div>
         </div>
 
-        {/* Timer progress bar */}
-        <div className="mb-6">
+        {/* Pending address */}
+        <div className="mb-5 p-3 bg-vault-surface border border-vault-border/50 rounded-xl">
+          <p className="text-vault-muted text-[10px] font-body tracking-[0.12em] uppercase mb-1">New Address</p>
+          <p className="font-body text-xs text-vault-text-dim break-all">{pendingSafeAddress.address}</p>
+        </div>
+
+        {/* Progress bar */}
+        <div className="mb-5">
           <div className="h-1 bg-vault-surface rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all duration-1000 ${
-                isComplete
-                  ? 'bg-vault-accent w-full'
-                  : 'bg-gradient-to-r from-vault-warning to-vault-warning/60'
+                isComplete ? 'bg-vault-accent w-full' : 'bg-gradient-to-r from-vault-warning to-vault-warning/60'
               }`}
               style={{
-                width: isComplete
-                  ? '100%'
-                  : `${(secondsLeft / pendingWithdrawal.unlockDuration) * 100}%`,
+                width: isComplete ? '100%' : `${(secondsLeft / pendingSafeAddress.unlockDuration) * 100}%`,
               }}
             />
           </div>
@@ -132,17 +104,17 @@ export default function PendingCard() {
         {/* Action buttons */}
         <div className="flex gap-3">
           <button
-            onClick={handleExecute}
-            disabled={!isComplete || executingAction === 'execute'}
+            onClick={handleConfirm}
+            disabled={!isComplete || executingAction === 'confirm'}
             className="btn-primary flex-1 flex items-center justify-center gap-2"
           >
-            {executingAction === 'execute' ? (
+            {executingAction === 'confirm' ? (
               <>
                 <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
                   <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" opacity="0.3" />
                   <path d="M12 2C6.48 2 2 6.48 2 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                 </svg>
-                Executing…
+                Setting…
               </>
             ) : (
               <>
@@ -152,7 +124,7 @@ export default function PendingCard() {
                     <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                   </svg>
                 )}
-                Execute Withdrawal
+                Set Address
               </>
             )}
           </button>
@@ -163,22 +135,17 @@ export default function PendingCard() {
             className="btn-danger flex-shrink-0 flex items-center justify-center gap-2"
           >
             {executingAction === 'cancel' ? (
-              <>
-                <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" opacity="0.3" />
-                  <path d="M12 2C6.48 2 2 6.48 2 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-              </>
-            ) : (
-              'Cancel'
-            )}
+              <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" opacity="0.3" />
+                <path d="M12 2C6.48 2 2 6.48 2 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            ) : 'Cancel'}
           </button>
         </div>
 
-        {/* Helper text */}
         {!isComplete && (
           <p className="text-vault-muted text-[10px] font-body mt-3 text-center">
-            Execute button will unlock when the countdown reaches 00:00
+            "Set Address" will unlock when the countdown reaches 00:00
           </p>
         )}
       </div>

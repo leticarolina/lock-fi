@@ -7,78 +7,73 @@ export default function VaultInfo() {
 
   return (
     <div className="card relative overflow-hidden">
-      {/* Subtle accent glow top-left */}
-      <div className="absolute -top-16 -left-16 w-40 h-40 bg-vault-accent/5 rounded-full blur-3xl pointer-events-none" />
+      {/* Corner accent */}
+      <div className="absolute top-0 right-0 w-32 h-32 pointer-events-none"
+        style={{ background: 'radial-gradient(circle at top right, rgba(255,107,43,0.06), transparent 70%)' }} />
 
-      <div className="relative flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-        {/* Balance */}
-        <div className="space-y-1">
-          <p className="text-vault-muted text-[11px] font-body tracking-[0.15em] uppercase">
-            Vault Balance
-          </p>
-          <div className="flex items-baseline gap-2">
-            <span className="font-display font-700 text-4xl text-vault-text tabular-nums">
-              {vaultBalance.toFixed(2)}
-            </span>
-            <span className="font-body text-sm text-vault-accent tracking-wider">MON</span>
+      <div className="relative">
+        {/* Section label */}
+        <p className="font-body text-[10px] tracking-[0.2em] uppercase mb-3" style={{ color: '#FF6B2B' }}>
+          // Vault Balance
+        </p>
+
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+          {/* Big balance */}
+          <div>
+            <div className="flex items-baseline gap-3">
+              <span className="font-display tabular-nums" style={{ fontSize: 'clamp(2.8rem, 8vw, 4.5rem)', lineHeight: 1, color: '#E8E8E8', letterSpacing: '-2px' }}>
+                {vaultBalance.toFixed(2)}
+              </span>
+              <span className="font-body text-sm tracking-widest uppercase" style={{ color: '#CAFF00' }}>MON</span>
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div className="flex items-center gap-8">
+            <div>
+              <p className="font-body text-[10px] tracking-[0.15em] uppercase mb-1" style={{ color: '#555' }}>
+                Instant Limit
+              </p>
+              <p className="font-display text-xl tabular-nums" style={{ color: '#aaa', letterSpacing: '-1px' }}>
+                {instantWithdrawLimit.toFixed(2)}
+                <span className="font-body text-xs ml-1" style={{ color: '#555' }}>MON</span>
+              </p>
+            </div>
+
+            <div>
+              <p className="font-body text-[10px] tracking-[0.15em] uppercase mb-1" style={{ color: '#555' }}>
+                Status
+              </p>
+              {locked ? (
+                <div className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#ef4444' }} />
+                  <span className="font-body text-xs tracking-widest uppercase" style={{ color: '#ef4444' }}>Locked</span>
+                </div>
+              ) : pendingWithdrawal ? (
+                <div className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#f59e0b' }} />
+                  <span className="font-body text-xs tracking-widest uppercase" style={{ color: '#f59e0b' }}>Pending</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#CAFF00' }} />
+                  <span className="font-body text-xs tracking-widest uppercase" style={{ color: '#CAFF00' }}>Secure</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Stats row */}
-        <div className="flex items-center gap-6">
-          {/* Instant limit */}
-          <div className="space-y-1">
-            <p className="text-vault-muted text-[10px] font-body tracking-[0.15em] uppercase">
-              Instant Limit
-            </p>
-            <p className="font-body text-lg text-vault-text-dim tabular-nums">
-              {instantWithdrawLimit.toFixed(2)} <span className="text-xs text-vault-muted">MON</span>
-            </p>
+        {/* Progress bar */}
+        <div className="mt-6 space-y-2">
+          <div className="flex justify-between font-body text-[10px] tracking-widest uppercase" style={{ color: '#444' }}>
+            <span>0%</span>
+            <span>Instant Threshold — 60%</span>
+            <span>100%</span>
           </div>
-
-          {/* Status indicator */}
-          <div className="space-y-1">
-            <p className="text-vault-muted text-[10px] font-body tracking-[0.15em] uppercase">
-              Status
-            </p>
-            {locked ? (
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-vault-danger animate-pulse" />
-                <span className="font-body text-xs text-vault-danger tracking-wide uppercase">
-                  Locked
-                </span>
-              </div>
-            ) : pendingWithdrawal ? (
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-vault-warning animate-pulse" />
-                <span className="font-body text-xs text-vault-warning tracking-wide uppercase">
-                  Pending
-                </span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-vault-accent" />
-                <span className="font-body text-xs text-vault-accent tracking-wide uppercase">
-                  Secure
-                </span>
-              </div>
-            )}
+          <div className="h-px w-full" style={{ background: '#1a1a1a' }}>
+            <div className="h-full transition-all duration-700" style={{ width: '60%', background: 'linear-gradient(90deg, #FF6B2B, #CAFF00)' }} />
           </div>
-        </div>
-      </div>
-
-      {/* Progress bar showing instant limit ratio */}
-      <div className="mt-5 space-y-1.5">
-        <div className="flex justify-between text-[10px] font-body text-vault-muted tracking-wider uppercase">
-          <span>0%</span>
-          <span>Instant Threshold — 60%</span>
-          <span>100%</span>
-        </div>
-        <div className="h-1.5 bg-vault-surface rounded-full overflow-hidden">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-vault-accent to-vault-accent-dim transition-all duration-700"
-            style={{ width: '60%' }}
-          />
         </div>
       </div>
     </div>
