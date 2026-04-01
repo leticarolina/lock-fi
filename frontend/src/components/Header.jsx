@@ -8,14 +8,14 @@ export default function Header({ onGoHome }) {
 
   return (
     <header className="border-b border-vault-border/60 backdrop-blur-xl sticky top-0 z-50" style={{ background: 'rgba(10,10,10,0.85)' }}>
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-        {/* Logo */}
-        <img src="/logo_nova.svg" alt="LockFi" className="h-9 w-auto cursor-pointer flex-shrink-0" onClick={onGoHome} />
-
-        {/* Center tag */}
-        <span className="hidden sm:block font-body text-[10px] tracking-[0.3em] uppercase flex-1 text-center" style={{ color: '#888' }}>
-          Secure Withdrawal Protocol
-        </span>
+      <div className="w-full px-6 sm:px-10 h-16 flex items-center justify-between gap-4">
+        {/* Logo + tag */}
+        <div className="flex items-center gap-4">
+          <img src="/logo_nova.svg" alt="LockFi" className="h-9 w-auto cursor-pointer flex-shrink-0" onClick={onGoHome} />
+          <span className="hidden sm:block font-body text-[10px] tracking-[0.3em] uppercase" style={{ color: '#888' }}>
+            Secure Withdrawal Protocol
+          </span>
+        </div>
 
         {/* Wallet info */}
         <div className="flex items-center gap-3">
