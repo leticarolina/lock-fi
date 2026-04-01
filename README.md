@@ -1,165 +1,168 @@
-# 🔒 LockFi — Cofre com Proteção Contra Saques Arriscados
+# 🔒 LockFi — Vault Protection Against Risky Withdrawals
 
-**LockFi** é um cofre inteligente que ajuda a evitar perdas rápidas de fundos ao adicionar um **tempo de espera** em saques considerados arriscados.
+**LockFi** is a security-oriented smart vault that introduces a strategic delay on high-risk withdrawals, preventing the instant loss of user funds.
 
-Em vez de permitir que grandes valores saiam instantaneamente, o LockFi cria um **período de espera**, dando ao usuário tempo para reagir, cancelar ou bloquear o cofre.
+Instead of allowing large amounts to exit a wallet immediately, LockFi creates a "reaction window." This gives the user time to detect unauthorized activity, cancel the withdrawal, or trigger an emergency lock before the funds are actually moved.
 
-**⭐ Motivação**: Perder fundos instantaneamente não deveria ser o padrão, usuários merecem tempo para reagir.
+**⭐ The Vision**: Instant fund drainage should not be the industry standard. Users deserve a fair window of time to react to threats.
 
-Projeto desenvolvido para o **Monad Hackathon**.
+Project developed for the **Monad Hackathon** (1st Place Winner 🏆).
+
+**Smart Contract:** [`LockFi.sol`](https://testnet.monadscan.com/address/0x31b36930BdFe07f4366379De4CFeAEF528Ce8e70)
+**Live Demo:** [LockFi DApp](https://lockfi.vercel.app/)
 
 ---
 
-## O Problema
+## The Problem
 
-Hoje, em cripto:
+Currently, in the crypto ecosystem:
 
-- Se sua wallet for comprometida → os fundos podem ser drenados instantaneamente
-- Se você enviar um valor errado → não há como reverter
-- Se alguém tentar sacar tudo → o dinheiro sai na hora
+- **Compromised Wallet** → Funds are drained in seconds.
+- **Fat-finger Errors** → No way to revert a transaction once sent.
+- **Total Drainage** → Attackers can empty a vault instantly.
 
-Ou seja:
+**The Reality:**
 
-- Não existe tempo para reagir  
-- Não existe proteção intermediária  
-- Tudo acontece instantaneamente  
+- Zero reaction time.
+- No intermediate protection layer.
+- Everything happens at the speed of the blockchain, making any mistake or exploit fatal.
 
-Isso torna qualquer erro ou ataque muito perigoso.
+## The Solution — LockFi
 
-## A Solução — LockFi
+LockFi acts as an **Intelligent Security Layer** for your assets.
 
-O LockFi funciona como um **cofre inteligente**.
+When you deposit funds into the vault and attempt a withdrawal, the system categorizes the risk:
 
-Você deposita seus fundos nele.
+- 🟢 **Small Withdrawals** → Executed instantly.
+- 🟠 **Large Withdrawals** → Placed in a "Pending" queue.
+- 🔴 **Suspicious Patterns** → Automatically flagged for a mandatory delay.
 
-Quando você tenta sacar:
+This delay creates a **Reaction Window**. If a transaction wasn't initiated by you (or was a mistake), you can:
 
-- 🟢 Saques pequenos → acontecem na hora  
-- 🟠 Saques grandes → entram em espera  
-- 🔴 Situações suspeitas → entram em espera automaticamente  
+1. **Cancel** the withdrawal immediately.
+2. **Lock** the entire vault.
+3. **Save** withdraw your assets to a safe pre-defined address before they leave the contract.
 
-Esse tempo cria uma **janela de reação**.
+## How it Works in Practice
 
-Se algo parecer errado, você pode:
+### 1. Deposit
 
-- Cancelar o saque  
-- Bloquear o cofre  
-- Evitar a perda dos fundos  
+The user sends ETH to the vault. The value is safely stored within the smart contract logic.
 
-## Como Funciona na Prática
+### 2. Request Withdrawal
 
-### 1 - Depositar
+When a user requests a withdrawal, the contract evaluates the risk profile:
 
-O usuário envia ETH para o cofre:
-O valor fica armazenado no contrato.
+**Secure Withdrawal:** If the amount is small relative to the total balance, it executes immediately.
+**Risky Withdrawal:** If the amount meets one of the risky behaviors, the withdrawal enters a **Pending State**.
 
-### 2 - Solicitar Saque
+### 3. Execute or Cancel
 
-O usuário pede um saque: O contrato avalia se o saque é seguro.
+If the withdrawal was legitimate, the user simply waits for the timer to expire and calls the execution function. If the activity is suspicious, the user can trigger an **Immediate Cancel**, returning the funds to the secure vault state.
 
-🟢 Saque Seguro
+### 4. Emergency Lockdown
 
-Se o valor for pequeno, executa imediatamente.
+In case of a known or suspicious of compromise, the user can trigger an **Emergency Lock**. This freezes all outgoing activity for 24 hours, providing a vital buffer to move recovery keys or secure other assets.
 
-🟠 Saque Grande ou Arriscado
+---
 
-Se o valor for mais do que 60% da balança, o saque entra em estado **pendente**.
+## Risk Detection Rules
 
-### 3 - Executar ou Cancelar Saque
+A withdrawal is flagged and delayed if it triggers any of the following conditions.
 
-Se algo parecer estranho, o usuário pode solicitar o cancelamento imediato do saque e o valor volta para o cofre.
+These rules are designed to detect common attack behaviors while preserving normal user experience.
 
-Caso queira continuar com o saque, após aguardar o timer, o valor pode ser enviado.
+---
 
-### 5 -  Bloqueio de Emergência
+### Rule 1: Threshold Breach (Large Withdrawal)
 
-O usuário pode travar o cofre com o Lock de emergência.
+Triggered if the withdrawal amount is greater than **60% of the user's total balance**.
 
-Isso bloqueia saques por 24 horas. Útil em caso de suspeita.
+**Example**
 
-### Regras de Detecção de Risco
+Balance: `10 ETH`  
+Withdrawal: `7 ETH` → **Flagged**
 
-Um saque entra em espera se:
+This rule protects against **instant full-balance drain attempts**, which are common after wallet compromise.
 
-#### Regra 1 — Saque Grande
+---
 
-Se o saque for maior que:
+### Rule 2: Anomaly Detection (Suspicious Pattern)
 
-60% do saldo do usuário
+Triggered if a small "test" withdrawal is immediately followed by a large withdrawal.
 
-Exemplo:
+**Example**
 
-- Saldo: 10 ETH
-- Saque: 7 ETH
+Withdrawal 1: `0.1 ETH`  
+Withdrawal 2: `5 ETH` → **Flagged**
 
-#### Regra 2 — Padrão Suspeito
+This rule protects against **staged attack behavior**, where attackers first test wallet permissions before attempting a larger withdrawal.
 
-Se ocorrer um saque pequeno seguido de um saque grande
+---
 
-Exemplo:
+### Rule 3: Cumulative Withdrawal Limit (Time-Based Protection)
 
-- Saque: 0.1 ETH
-- Depois: 5 ETH
+Triggered if the user's **total withdrawals within a rolling time window** exceed a defined percentage of their balance.
 
-Isso simula padrões comuns em ataques.
+**Current Configuration**
 
-## Por Que Isso Importa?
+- Maximum allowed: **30% of balance**
+- Time window: **72 hours**
 
-O LockFi adiciona:
+If cumulative withdrawals exceed this threshold, the **next withdrawal is automatically flagged and delayed**, regardless of size.
 
-- Tempo para reagir
-- Controle do usuário
-- Redução de risco
+**Example**
 
-Em vez de:
+Withdrawal 1 → `10%`  
+Withdrawal 2 → `10%`  
+Withdrawal 3 → `10%`  
+Withdrawal 4 → `Any amount` → **Flagged**
 
-- Perda instantânea
-- Falta de controle
-- Nenhuma proteção
+This rule protects against **slow-drain attacks**, where attackers attempt to bypass large-withdrawal protections by extracting funds gradually over time.
 
-Ele mantém a autocustódia, mas com mais segurança prática.
+---
 
-## Principais Funcionalidades
+## Why These Rules Matter
 
-- Cofre de armazenamento em ETH
-- Saques instantâneos para valores pequenos
-- Saques com atraso para valores grandes
-- Cancelamento de saques pendentes
-- Bloqueio de emergência
-- Detecção simples de risco
-- Um saque pendente por usuário
+Together, these mechanisms create **layered behavioral protection** against multiple real-world attack patterns:
 
-## Visão Geral do Smart Contract
+- **Rule 1** → Blocks large instant drains  
+- **Rule 2** → Detects staged attack behavior  
+- **Rule 3** → Prevents slow cumulative draining  
 
-Funções principais:
+Instead of blocking withdrawals outright, LockFi introduces **controlled delays**, giving users time to react, cancel suspicious actions, or move funds to a safe address.
+
+---
+
+### Key Features
+
+- **ETH Storage Vault:** Secure on-chain accounting.
+- **Dynamic Delays:** Speed for small amounts, safety for large ones.
+- **Active Defense:** Cancel pending transactions or lock the vault entirely.
+- **One Pending Action:** Prevents spamming withdrawal requests to bypass security.
+
+## Technical Overview
+
+### Smart Contract Functions
 
 ```solidity
-deposit()
-withdraw(uint256 amount)
-executeWithdraw()
-cancelWithdraw()
-emergencyLock()
+deposit()           // Securely store ETH
+withdraw(amount)    // Initiate withdrawal (Instant or Delayed)
+executeWithdraw()   // Complete a pending withdrawal after the delay
+cancelWithdraw()    // Revert a suspicious pending withdrawal
+emergencyLock()     // 24-hour freeze on all vault activity
 ```
 
-## Estrutura de Segurança
+## Security Architecture
 
-Principais proteções:
+- Strict Internal Accounting: Prevents reentrancy and balance manipulation.
+- State Independence: Each user’s security state (timers/locks) is isolated.
+- Mandatory Timelocks: Immutable logic ensures delays cannot be bypassed if triggered.
+- Safe-Address Whitelisting: Pre-define recovery addresses.
 
-- Apenas um saque pendente por usuário
-- Controle interno de saldo
-- Tempo obrigatório para saques arriscados
-- Bloqueio manual de emergência
-- Estado independente por usuário
+## Authorship
 
-## Melhorias Futuras
+Leticia Azevedo — Smart Contract Architecture & Lead Dev
+Shaiane Viana — UI/UX Design
 
-Ideias para evoluir o projeto:
-
-- Endereço seguro pré-definido
-- Integração com hardware wallets/Multi-signature
-- Personalização das regras de risco
-
-### Autoria
-
-Leticia Azevedo (Smart Contract)
-Shaiane Viana (UI)
+Built with 💜 for the Monad ecosystem.
