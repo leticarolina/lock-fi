@@ -37,7 +37,7 @@ contract LockFi is ReentrancyGuard {
     uint256 public constant MAX_LOCK_DURATION = 30 days;
     uint256 public constant SAFE_ADDRESS_CHANGE_DELAY = 24 hours;
     uint256 public constant WINDOW_DURATION_FOR_MAX_WITHDRAW = 72 hours;
-    uint256 public constant MAX_WITHDRAW_PERCENT = 30;
+    uint256 public constant MAX_INSTANT_WITHDRAW_PERCENT = 30;
 
     mapping(address => uint256) public balances; //Tracks withdrawable funds
     mapping(address => WithdrawalRequest) public pendingWithdraw; // Pending withdrawals per user
@@ -58,15 +58,28 @@ contract LockFi is ReentrancyGuard {
 
     //EVENTS
     event Deposited(address indexed user, uint256 amount);
-    event WithdrawalRequested(address indexed user, uint256 amount, uint256 unlockTime, uint256 requestTime);
+    event WithdrawalRequested(
+        address indexed user,
+        uint256 amount,
+        uint256 unlockTime,
+        uint256 requestTime
+    );
     event WithdrawalExecuted(address indexed user, uint256 amount);
     event WithdrawalCancelled(address indexed user, uint256 amount);
     event EmergencyLockActivated(address indexed user, uint256 lockedUntil);
     event SafeAddressSet(address indexed user, address safe);
-    event SafeAddressChangeRequested(address indexed previousSafe, address indexed newSafe, uint256 unlockTime);
+    event SafeAddressChangeRequested(
+        address indexed previousSafe,
+        address indexed newSafe,
+        uint256 unlockTime
+    );
     event SafeAddressChangeConfirmed(address indexed user, address newSafe);
     event SafeAddressChangeCancelled(address indexed user);
-    event EmergencyWithdrawToSafe(address indexed user, address safe, uint256 amount);
+    event EmergencyWithdrawToSafe(
+        address indexed user,
+        address safe,
+        uint256 amount
+    );
 
     /// DEPOSIT FUNCTION
     /// @notice Deposit native token into the vault
@@ -120,10 +133,18 @@ contract LockFi is ReentrancyGuard {
         if (risky) {
             uint256 unlockTime = block.timestamp + DELAY;
 
-            pendingWithdraw[msg.sender] =
-                WithdrawalRequest({amount: amount, unlockTime: unlockTime, requestTime: block.timestamp});
+            pendingWithdraw[msg.sender] = WithdrawalRequest({
+                amount: amount,
+                unlockTime: unlockTime,
+                requestTime: block.timestamp
+            });
 
-            emit WithdrawalRequested(msg.sender, amount, unlockTime, block.timestamp);
+            emit WithdrawalRequested(
+                msg.sender,
+                amount,
+                unlockTime,
+                block.timestamp
+            );
 
             return;
         }
@@ -192,17 +213,20 @@ contract LockFi is ReentrancyGuard {
 
     // RISK DETECTION LOGIC
     /// @dev This function implements the core risk assessment logic based on predefined rules.
-    function _isRisky(address user, uint256 amount, uint256 balance) internal view returns (bool) {
+    function _isRisky(
+        address user,
+        uint256 amount,
+        uint256 balance
+    ) internal view returns (bool) {
         // RULE 1: amount > 60% of balance
         bool largeWithdrawal = amount > (balance * 60) / 100;
 
-        // RULE 2: last withdrawal < 5% AND new withdrawal > 40%
+        // RULE 2: last withdrawal < 5%
         uint256 lastPercent = lastWithdrawPercent[user];
 
         bool hasPreviousWithdrawal = lastPercent > 0;
         bool isLastWithdrawSmall = lastPercent < 5;
-        bool isNextWithdrawLarge = amount > (balance * 40) / 100;
-        bool suspiciousPattern = hasPreviousWithdrawal && isLastWithdrawSmall && isNextWithdrawLarge;
+        bool suspiciousPattern = hasPreviousWithdrawal && isLastWithdrawSmall;
 
         // RULE 3: cumulative withdrawals in last 72h > 30% of balance
         uint256 currentPercent = (amount * 100) / balance;
@@ -211,10 +235,12 @@ contract LockFi is ReentrancyGuard {
         bool cumulativeExceeded = false; // Default to false if no withdrawals in window or window expired
 
         if (startTime != 0) {
-            bool windowActive = block.timestamp <= startTime + WINDOW_DURATION_FOR_MAX_WITHDRAW;
+            bool windowActive = block.timestamp <=
+                startTime + WINDOW_DURATION_FOR_MAX_WITHDRAW;
 
             if (windowActive) {
-                cumulativeExceeded = accumulated + currentPercent > MAX_WITHDRAW_PERCENT;
+                cumulativeExceeded =
+                    accumulated + currentPercent > MAX_INSTANT_WITHDRAW_PERCENT;
             }
         }
 
@@ -223,7 +249,7 @@ contract LockFi is ReentrancyGuard {
 
     //INTERNAL ETH SEND
     function _sendEth(address to, uint256 amount) internal {
-        (bool success,) = to.call{value: amount}("");
+        (bool success, ) = to.call{value: amount}("");
 
         // require(success, "Transfer failed");
         if (!success) revert TransferFailed();
@@ -235,9 +261,7 @@ contract LockFi is ReentrancyGuard {
         // Initialize window if first use
         if (start == 0) {
             windowStartTime[user] = block.timestamp;
-
             withdrawnInWindow[user] = percent;
-
             return;
         }
 
@@ -267,6 +291,9 @@ contract LockFi is ReentrancyGuard {
         if (safeAddress[msg.sender] != address(0)) {
             revert SafeAddressAlreadySet();
         }
+        if (_safe == msg.sender) {
+            revert InvalidSafeAddress();
+        }
 
         safeAddress[msg.sender] = _safe;
 
@@ -274,6 +301,10 @@ contract LockFi is ReentrancyGuard {
     }
 
     function requestSafeAddressChange(address _newSafe) external {
+        if (lockedUntil[msg.sender] > block.timestamp) {
+            revert EmergencyLockOngoing();
+        }
+
         if (_newSafe == address(0)) {
             revert InvalidSafeAddress();
         }
@@ -303,10 +334,18 @@ contract LockFi is ReentrancyGuard {
         pendingSafeAddress[msg.sender] = _newSafe;
         safeChangeUnlockTime[msg.sender] = unlockTime;
 
-        emit SafeAddressChangeRequested(safeAddress[msg.sender], _newSafe, unlockTime);
+        emit SafeAddressChangeRequested(
+            safeAddress[msg.sender],
+            _newSafe,
+            unlockTime
+        );
     }
 
     function confirmSafeAddressChange() external {
+        if (lockedUntil[msg.sender] > block.timestamp) {
+            revert EmergencyLockOngoing();
+        }
+
         address pending = pendingSafeAddress[msg.sender];
 
         if (pending == address(0)) {
@@ -381,14 +420,22 @@ contract LockFi is ReentrancyGuard {
     }
 
     /// @notice Returns instant withdraw limit
-    function getInstantWithdrawLimit(address user) external view returns (uint256) {
-        if (pendingWithdraw[user].amount > 0) {
+    function getInstantWithdrawLimit(
+        address user
+    ) external view returns (uint256) {
+        if (pendingWithdraw[user].amount > 0) return 0;
+
+        // If last withdrawal was a small probe, next withdrawal will be flagged regardless
+        if (lastWithdrawPercent[user] > 0 && lastWithdrawPercent[user] < 5) {
             return 0;
         }
-        return (balances[user] * 40) / 100;
+
+        return (balances[user] * 60) / 100; // Rule 1 threshold
     }
 
-    function getPendingWithdraw(address user)
+    function getPendingWithdraw(
+        address user
+    )
         external
         view
         returns (uint256 amount, uint256 unlockTime, uint256 requestTime)
@@ -402,7 +449,9 @@ contract LockFi is ReentrancyGuard {
         return block.timestamp < lockedUntil[user];
     }
 
-    function getRemainingLockTime(address user) external view returns (uint256) {
+    function getRemainingLockTime(
+        address user
+    ) external view returns (uint256) {
         uint256 lockTime = lockedUntil[user];
 
         if (block.timestamp >= lockTime) {
@@ -412,7 +461,9 @@ contract LockFi is ReentrancyGuard {
         return lockTime - block.timestamp;
     }
 
-    function getRemainingPendingTime(address user) external view returns (uint256) {
+    function getRemainingPendingTime(
+        address user
+    ) external view returns (uint256) {
         WithdrawalRequest memory req = pendingWithdraw[user];
 
         if (req.amount == 0) {
@@ -426,7 +477,9 @@ contract LockFi is ReentrancyGuard {
         return req.unlockTime - block.timestamp;
     }
 
-    function getUserState(address user)
+    function getUserState(
+        address user
+    )
         external
         view
         returns (
@@ -443,8 +496,12 @@ contract LockFi is ReentrancyGuard {
         WithdrawalRequest memory req = pendingWithdraw[user];
         if (req.amount > 0) {
             instantLimit = 0;
+        } else if (
+            lastWithdrawPercent[user] > 0 && lastWithdrawPercent[user] < 5
+        ) {
+            instantLimit = 0; // Rule 2 — next withdrawal will be flagged regardless
         } else {
-            instantLimit = (balance * 40) / 100;
+            instantLimit = (balance * 60) / 100; // Rule 1 threshold
         }
 
         hasPending = req.amount > 0;
@@ -462,7 +519,9 @@ contract LockFi is ReentrancyGuard {
         }
     }
 
-    function getPendingSafeChange(address user) external view returns (address pendingSafe, uint256 remainingTime) {
+    function getPendingSafeChange(
+        address user
+    ) external view returns (address pendingSafe, uint256 remainingTime) {
         pendingSafe = pendingSafeAddress[user];
 
         if (pendingSafe == address(0)) {
