@@ -13,7 +13,7 @@ export default function Header({ onGoHome }) {
         <img src="/logo_nova.svg" alt="LockFi" className="h-9 w-auto cursor-pointer flex-shrink-0" onClick={onGoHome} />
 
         {/* Center tag */}
-        <span className="hidden sm:block font-body text-[10px] tracking-[0.3em] uppercase flex-1 text-center" style={{ color: '#333' }}>
+        <span className="hidden sm:block font-body text-[10px] tracking-[0.3em] uppercase flex-1 text-center" style={{ color: '#888' }}>
           Secure Withdrawal Protocol
         </span>
 

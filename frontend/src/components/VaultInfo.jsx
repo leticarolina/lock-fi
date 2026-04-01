@@ -31,17 +31,17 @@ export default function VaultInfo() {
           {/* Stats */}
           <div className="flex items-center gap-8">
             <div>
-              <p className="font-body text-[10px] tracking-[0.15em] uppercase mb-1" style={{ color: '#555' }}>
+              <p className="font-body text-[10px] tracking-[0.15em] uppercase mb-1" style={{ color: '#888' }}>
                 Instant Limit
               </p>
-              <p className="font-display text-xl tabular-nums" style={{ color: '#aaa', letterSpacing: '-1px' }}>
+              <p className="font-display text-xl tabular-nums" style={{ color: '#ccc', letterSpacing: '-1px' }}>
                 {instantWithdrawLimit.toFixed(2)}
-                <span className="font-body text-xs ml-1" style={{ color: '#555' }}>MON</span>
+                <span className="font-body text-xs ml-1" style={{ color: '#888' }}>MON</span>
               </p>
             </div>
 
             <div>
-              <p className="font-body text-[10px] tracking-[0.15em] uppercase mb-1" style={{ color: '#555' }}>
+              <p className="font-body text-[10px] tracking-[0.15em] uppercase mb-1" style={{ color: '#888' }}>
                 Status
               </p>
               {locked ? (
@@ -66,14 +66,21 @@ export default function VaultInfo() {
 
         {/* Progress bar */}
         <div className="mt-6 space-y-2">
-          <div className="flex justify-between font-body text-[10px] tracking-widest uppercase" style={{ color: '#444' }}>
-            <span>0%</span>
-            <span>Instant Threshold — 60%</span>
-            <span>100%</span>
-          </div>
-          <div className="h-px w-full" style={{ background: '#1a1a1a' }}>
-            <div className="h-full transition-all duration-700" style={{ width: '60%', background: 'linear-gradient(90deg, #FF6B2B, #CAFF00)' }} />
-          </div>
+          {(() => {
+            const thresholdPct = vaultBalance > 0 ? Math.min((instantWithdrawLimit / vaultBalance) * 100, 100) : 0
+            return (
+              <>
+                <div className="flex justify-between font-body text-[10px] tracking-widest uppercase" style={{ color: '#666' }}>
+                  <span>0%</span>
+                  <span>Instant Threshold — {thresholdPct.toFixed(0)}%</span>
+                  <span>100%</span>
+                </div>
+                <div className="h-px w-full" style={{ background: '#1a1a1a' }}>
+                  <div className="h-full transition-all duration-700" style={{ width: `${thresholdPct}%`, background: 'linear-gradient(90deg, #FF6B2B, #CAFF00)' }} />
+                </div>
+              </>
+            )
+          })()}
         </div>
       </div>
     </div>

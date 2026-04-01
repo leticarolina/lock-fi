@@ -16,7 +16,7 @@ export default function Dashboard({ onGoHome }) {
   const hasPendingSafe = pendingSafeAddress !== null
 
   return (
-    <div className="min-h-screen pb-12">
+    <div className="min-h-screen" style={{ paddingBottom: '64px' }}>
       <Header onGoHome={onGoHome} />
 
       <main className="max-w-2xl mx-auto px-4 sm:px-6 pt-8 space-y-6">
@@ -58,30 +58,35 @@ export default function Dashboard({ onGoHome }) {
         <div className="animate-fade-up" style={{ animationDelay: '0.45s', opacity: 0 }}>
           <SafeAddressCard />
         </div>
-
-        {/* Footer */}
-        <footer className="animate-fade-up" style={{
-          animationDelay: '0.55s', opacity: 0,
-          borderTop: '1px solid #222',
-          marginTop: 16,
-          padding: '20px 0',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 12,
-        }}>
-          <span style={{ fontSize: '0.6rem', letterSpacing: '2px', color: '#555', textTransform: 'uppercase', fontFamily: "'Space Mono', monospace" }}>
-            © 2026 LockFi Protocol
-          </span>
-          <span style={{ color: '#CAFF00', fontSize: '0.65rem', letterSpacing: '3px', fontFamily: "'Space Mono', monospace" }}>
-            ◆ Built on Monad
-          </span>
-          <span style={{ fontSize: '0.6rem', letterSpacing: '2px', color: '#555', textTransform: 'uppercase', fontFamily: "'Space Mono', monospace" }}>
-            Leticia Azevedo &amp; Shaiane Viana
-          </span>
-        </footer>
       </main>
+
+      {/* Fixed footer */}
+      <footer style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        borderTop: '1px solid #222',
+        padding: '14px 40px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: 12,
+        background: 'rgba(10,10,10,0.92)',
+        backdropFilter: 'blur(12px)',
+        zIndex: 40,
+      }}>
+        <span style={{ fontSize: '0.6rem', letterSpacing: '2px', color: '#555', textTransform: 'uppercase', fontFamily: "'Space Mono', monospace" }}>
+          © 2026 LockFi Protocol
+        </span>
+        <span style={{ color: '#CAFF00', fontSize: '0.65rem', letterSpacing: '3px', fontFamily: "'Space Mono', monospace" }}>
+          ◆ Built on Monad
+        </span>
+        <span style={{ fontSize: '0.6rem', letterSpacing: '2px', color: '#555', textTransform: 'uppercase', fontFamily: "'Space Mono', monospace" }}>
+          Leticia Azevedo &amp; Shaiane Viana
+        </span>
+      </footer>
     </div>
   )
 }
