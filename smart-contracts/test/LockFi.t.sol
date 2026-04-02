@@ -4,6 +4,16 @@ pragma solidity ^0.8.20;
 import {Test} from "forge-std/Test.sol";
 import {LockFi} from "../src/LockFi.sol";
 
+/**
+ * @title LockFi Test Suite
+ * @author Leticia Azevedo
+ * @notice Unit tests for LockFi.sol covering all contract functions, risk detection rules,
+ * edge cases, and behavioral invariants. Tests are organized by feature area.
+ * @dev Test coverage includes: deposit/withdraw lifecycle, risk detection rules (Rule 1, 2, 3),
+ * pending withdrawal queue (execute/cancel), emergency lock mechanics, safe address management,
+ * withdrawToSafe flow, multi-user state isolation, and getter correctness.
+ * Uses Foundry (forge-std). Actor addresses: leti (primary), shai, eve (secondary/safe targets).
+ */
 contract LockFiTest is Test {
     LockFi vault;
 
