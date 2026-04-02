@@ -181,6 +181,12 @@ Test coverage includes unit tests across all functions and edge cases, plus inva
 - Rule thresholds are hardcoded constants. Configurable thresholds are a future consideration.
 - `lastWithdrawPercent` (Rule 2 probe detection) persists indefinitely. A user who once made a small withdrawal will have their next withdrawal delayed regardless of elapsed time. The cancel mechanism mitigates this.
 
+### NFT Support *(coming V3)*
+
+- Deposit and secure ERC-721 NFTs inside the vault.
+- All NFT withdrawals subject to a flat 12-hour delay — no exceptions.
+- High-value NFTs deserve the same reaction window as funds.
+
 ---
 
 ## Stack

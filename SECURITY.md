@@ -2,7 +2,7 @@
 
 **Author:** Leticia Azevedo  
 **Contract:** `LockFi.sol`  
-**Version:** MVP v2 - Post-hackathon
+**Version:** MVP
 **Last Updated:** April 2026
 
 ---
@@ -61,7 +61,7 @@ An attacker with a compromised key finds the vault under emergency lock and atte
 
 **Trigger:** The previous withdrawal was less than 5% of balance at the time it was made.  
 **Defends against:** Test-probe attack behavior where an attacker first verifies wallet access with a small transaction before executing a larger drain.  
-**Rationale:** A small probe withdrawal is a strong behavioral signal of staged attack intent. Any withdrawal following a probe, regardless of size, is treated as suspicious. The original design included a secondary threshold (next withdrawal > 40%) but this was removed because it made Rule 2 nearly redundant with Rule 3. 
+**Rationale:** A small probe withdrawal is a strong behavioral signal of staged attack intent. Any withdrawal following a probe, regardless of size, is treated as suspicious. The original design included a secondary threshold (next withdrawal > 40%) but this was removed because it made Rule 2 nearly redundant with Rule 3.
 
 **Important design notes:**
 
