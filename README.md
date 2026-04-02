@@ -8,7 +8,7 @@ Instead of letting funds exit immediately, LockFi evaluates every withdrawal att
 
 🏆 **1st Place Winner — Monad Hackathon**
 
-- **Smart Contract:** [`LockFi.sol`](https://testnet.monadscan.com/address/0x31b36930BdFe07f4366379De4CFeAEF528Ce8e70)
+- **Smart Contract:** [`LockFi.sol`](https://testnet.monadscan.com/address/0x0919Df3678039BCe59abdD19D7bf9e7D1b7eb5d8)
 - **Live Demo:** [lock-fi.vercel.app](https://lock-fi.vercel.app/)
 - **Security Design:** [`SECURITY.md`](./SECURITY.md)
 
@@ -170,11 +170,6 @@ For full design rationale, threat model, and audit guidance see [`SECURITY.md`](
 ---
 
 ## Testing
-
-```bash
-forge test          # Run unit tests (72 tests)
-forge test --match-contract LockFiInvariantTest   # Run invariant tests
-```
 
 Test coverage includes unit tests across all functions and edge cases, plus invariant tests verifying solvency, balance integrity, and state consistency under arbitrary call sequences.
 
