@@ -73,17 +73,17 @@ export default function Dashboard({ onGoHome }) {
         alignItems: 'center',
         flexWrap: 'wrap',
         gap: 12,
-        background: 'rgba(10,10,10,0.92)',
+        background: 'var(--clr-footer-bg)',
         backdropFilter: 'blur(12px)',
         zIndex: 40,
       }}>
-        <span style={{ fontSize: '0.6rem', letterSpacing: '2px', color: '#555', textTransform: 'uppercase', fontFamily: "'Space Mono', monospace" }}>
+        <span style={{ fontSize: '0.6rem', letterSpacing: '2px', color: 'var(--clr-muted)', textTransform: 'uppercase', fontFamily: "'Space Mono', monospace" }}>
           © 2026 LockFi Protocol
         </span>
         <span style={{ color: '#CAFF00', fontSize: '0.65rem', letterSpacing: '3px', fontFamily: "'Space Mono', monospace" }}>
           ◆ Built on Monad
         </span>
-        <span style={{ fontSize: '0.6rem', letterSpacing: '2px', color: '#555', textTransform: 'uppercase', fontFamily: "'Space Mono', monospace" }}>
+        <span style={{ fontSize: '0.6rem', letterSpacing: '2px', color: 'var(--clr-muted)', textTransform: 'uppercase', fontFamily: "'Space Mono', monospace" }}>
           Leticia Azevedo &amp; Shaiane Viana
         </span>
       </footer>

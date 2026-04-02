@@ -3,7 +3,8 @@ import { useVault } from '../context/VaultContext.jsx'
 import { useCountdown } from '../hooks/useCountdown.js'
 
 export default function PendingSafeAddressCard() {
-  const { pendingSafeAddress, confirmSafeAddress, cancelSafeAddressChange } = useVault()
+  const { pendingSafeAddress, confirmSafeAddress, cancelSafeAddressChange, isEmergencyLocked } = useVault()
+  const locked = isEmergencyLocked()
   const { formatted, isComplete, secondsLeft } = useCountdown(pendingSafeAddress?.unlockTimestamp)
   const [executingAction, setExecutingAction] = useState(null) // 'confirm' | 'cancel'
 
@@ -74,7 +75,7 @@ export default function PendingSafeAddressCard() {
           </div>
           <div className="space-y-1">
             <p className="text-vault-muted text-[10px] font-body tracking-[0.12em] uppercase">Unlocks In</p>
-            <p className="font-display tabular-nums" style={{ fontSize: '1.8rem', letterSpacing: '-1px', color: isComplete ? '#CAFF00' : '#f59e0b' }}>
+            <p className="font-display tabular-nums" style={{ fontSize: '1.8rem', letterSpacing: '-1px', color: isComplete ? 'var(--clr-accent-label)' : '#f59e0b' }}>
               {isComplete ? '00:00' : formatted}
             </p>
             <p className="font-body text-[11px] text-vault-muted">{isComplete ? 'Unlocked' : 'Remaining'}</p>
@@ -105,7 +106,7 @@ export default function PendingSafeAddressCard() {
         <div className="flex gap-3">
           <button
             onClick={handleConfirm}
-            disabled={!isComplete || executingAction === 'confirm'}
+            disabled={!isComplete || locked || executingAction === 'confirm'}
             className="btn-primary flex-1 flex items-center justify-center gap-2"
           >
             {executingAction === 'confirm' ? (
@@ -143,9 +144,12 @@ export default function PendingSafeAddressCard() {
           </button>
         </div>
 
-        {!isComplete && (
+        {(!isComplete || locked) && (
           <p className="text-vault-muted text-[10px] font-body mt-3 text-center">
-            "Set Address" will unlock when the countdown reaches 00:00
+            {locked
+              ? '"Set Address" is unavailable while vault is emergency locked.'
+              : '"Set Address" will unlock when the countdown reaches 00:00'
+            }
           </p>
         )}
       </div>

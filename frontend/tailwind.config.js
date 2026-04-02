@@ -8,10 +8,15 @@ export default {
     extend: {
       colors: {
         vault: {
-          bg:           '#0A0A0A',
-          surface:      '#111111',
-          card:         '#111111',
-          border:       '#222222',
+          // Theme-aware (use CSS variables)
+          bg:           'var(--clr-bg)',
+          surface:      'var(--clr-surface)',
+          card:         'var(--clr-surface)',
+          border:       'var(--clr-border)',
+          text:         'var(--clr-text)',
+          'text-dim':   'var(--clr-text-dim)',
+          muted:        'var(--clr-muted)',
+          // Static accent colors (opacity modifiers work)
           accent:       '#FF6B2B',
           'accent-dim': '#e55a1f',
           'accent-glow':'rgba(255,107,43,0.15)',
@@ -20,9 +25,6 @@ export default {
           green:        '#CAFF00',
           danger:       '#ef4444',
           'danger-glow':'rgba(239,68,68,0.12)',
-          muted:        '#555555',
-          text:         '#E8E8E8',
-          'text-dim':   '#aaaaaa',
         }
       },
       fontFamily: {

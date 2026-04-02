@@ -2,6 +2,54 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── THEME VARIABLES ─────────────────────────────── */
+:root {
+  /* Dark (default) */
+  --clr-bg:           #0A0A0A;
+  --clr-surface:      #111111;
+  --clr-deep:         #0d0d0d;
+  --clr-border:       #222222;
+  --clr-border-soft:  #2a2a2a;
+  --clr-text:         #E8E8E8;
+  --clr-text-dim:     #aaaaaa;
+  --clr-muted:        #555555;
+  --clr-muted-mid:    #777777;
+  --clr-nav-bg:       rgba(10,10,10,0.88);
+  --clr-footer-bg:    rgba(10,10,10,0.92);
+  --clr-grid:         rgba(255,107,43,0.03);
+  --clr-accent-label: #CAFF00;
+  --clr-steps-bg:     #f0ede9;
+  --clr-steps-card:   #efefef;
+  --clr-steps-text:   #111111;
+  --clr-steps-desc:   #666666;
+  --clr-steps-border: #d9d9d9;
+  --scroll-track:     #111111;
+  --scroll-thumb:     #333333;
+}
+
+[data-theme="light"] {
+  --clr-bg:           #F5F0EB;
+  --clr-surface:      #FFFFFF;
+  --clr-deep:         #F0EDE8;
+  --clr-border:       #E0DCD8;
+  --clr-border-soft:  #D5D0CC;
+  --clr-text:         #111111;
+  --clr-text-dim:     #444444;
+  --clr-muted:        #888888;
+  --clr-muted-mid:    #666666;
+  --clr-nav-bg:       rgba(245,240,235,0.92);
+  --clr-footer-bg:    rgba(245,240,235,0.95);
+  --clr-grid:         rgba(255,107,43,0.055);
+  --clr-accent-label: #FF6B2B;
+  --clr-steps-bg:     #EDE8E2;
+  --clr-steps-card:   #FAFAF8;
+  --clr-steps-text:   #111111;
+  --clr-steps-desc:   #555555;
+  --clr-steps-border: #D8D3CE;
+  --scroll-track:     #E8E3DE;
+  --scroll-thumb:     #C4BFB9;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -13,62 +61,93 @@ html {
 }
 
 body {
-  background-color: #0A0A0A;
-  color: #E8E8E8;
+  background-color: var(--clr-bg);
+  color: var(--clr-text);
   font-family: 'Space Mono', monospace;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #111111;
-}
-::-webkit-scrollbar-thumb {
-  background: #333333;
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #FF6B2B;
-}
+/* ── SCROLLBAR ───────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--scroll-track); }
+::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #FF6B2B; }
 
-/* Input focus */
+/* ── INPUTS ──────────────────────────────────────── */
 input[type="text"],
 input[type="number"] {
   transition: all 0.2s ease;
 }
-
 input[type="text"]:focus,
 input[type="number"]:focus {
   outline: none;
   box-shadow: 0 0 0 2px rgba(255, 107, 43, 0.35);
 }
 
-/* Noise texture overlay */
+/* ── LOCK DURATION SLIDER ────────────────────────── */
+input[type="range"].lock-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--clr-border);
+  outline: none;
+  cursor: pointer;
+}
+input[type="range"].lock-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #FF6B2B;
+  border: 2px solid var(--clr-bg);
+  box-shadow: 0 0 8px rgba(255, 107, 43, 0.5);
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+input[type="range"].lock-slider::-webkit-slider-thumb:hover {
+  background: #CAFF00;
+  box-shadow: 0 0 12px rgba(202, 255, 0, 0.5);
+}
+input[type="range"].lock-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #FF6B2B;
+  border: 2px solid var(--clr-bg);
+  box-shadow: 0 0 8px rgba(255, 107, 43, 0.5);
+  cursor: pointer;
+}
+input[type="range"].lock-slider::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--clr-border);
+}
+
+/* ── NOISE / GRID ────────────────────────────────── */
 .noise-overlay {
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 9999;
-  opacity: 0.03;
+  opacity: 0.025;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
   background-repeat: repeat;
   background-size: 256px 256px;
 }
 
-/* Grid background */
 .grid-bg {
   background-image:
-    linear-gradient(rgba(255,107,43,0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,107,43,0.03) 1px, transparent 1px);
+    linear-gradient(var(--clr-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--clr-grid) 1px, transparent 1px);
   background-size: 60px 60px;
 }
 
-/* Gradient mesh blob */
 .gradient-blob {
   position: absolute;
   border-radius: 50%;
@@ -76,6 +155,7 @@ input[type="number"]:focus {
   pointer-events: none;
 }
 
+/* ── COMPONENT CLASSES ───────────────────────────── */
 @layer components {
   .btn-primary {
     @apply relative overflow-hidden px-6 py-3 font-display text-sm tracking-wider uppercase
@@ -86,7 +166,6 @@ input[type="number"]:focus {
     color: #0A0A0A;
     clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
   }
-
   .btn-primary:not(:disabled):hover {
     background-color: #CAFF00;
     color: #0A0A0A;
@@ -102,7 +181,6 @@ input[type="number"]:focus {
     border-color: #FF6B2B;
     color: #FF6B2B;
   }
-
   .btn-secondary:not(:disabled):hover {
     background-color: #CAFF00;
     border-color: #CAFF00;
@@ -117,7 +195,6 @@ input[type="number"]:focus {
     background-color: transparent;
     color: #ef4444;
   }
-
   .btn-danger:not(:disabled):hover {
     background-color: #CAFF00;
     border-color: #CAFF00;
@@ -127,11 +204,11 @@ input[type="number"]:focus {
 
   .card {
     @apply border p-6 backdrop-blur-sm relative;
-    background-color: #111111;
-    border-color: #222222;
+    background-color: var(--clr-surface);
+    border-color: var(--clr-border);
     border-radius: 4px;
+    transition: background-color 0.25s ease, border-color 0.25s ease;
   }
-
   .card::before {
     content: '';
     position: absolute;
@@ -146,11 +223,10 @@ input[type="number"]:focus {
            px-4 py-3 font-body text-sm
            placeholder:text-vault-muted
            transition-all duration-200;
-    background-color: #0d0d0d;
-    border-color: #2a2a2a;
-    color: #E8E8E8;
+    background-color: var(--clr-deep);
+    border-color: var(--clr-border-soft);
+    color: var(--clr-text);
   }
-
   .input-field:focus {
     border-color: rgba(255,107,43,0.5);
   }

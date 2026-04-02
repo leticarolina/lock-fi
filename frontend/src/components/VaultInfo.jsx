@@ -21,27 +21,27 @@ export default function VaultInfo() {
           {/* Big balance */}
           <div>
             <div className="flex items-baseline gap-3">
-              <span className="font-display tabular-nums" style={{ fontSize: 'clamp(2.8rem, 8vw, 4.5rem)', lineHeight: 1, color: '#E8E8E8', letterSpacing: '-2px' }}>
+              <span className="font-display tabular-nums" style={{ fontSize: 'clamp(2.8rem, 8vw, 4.5rem)', lineHeight: 1, color: 'var(--clr-text)', letterSpacing: '-2px' }}>
                 {vaultBalance.toFixed(2)}
               </span>
-              <span className="font-body text-sm tracking-widest uppercase" style={{ color: '#CAFF00' }}>MON</span>
+              <span className="font-body text-sm tracking-widest uppercase" style={{ color: 'var(--clr-accent-label)' }}>MON</span>
             </div>
           </div>
 
           {/* Stats */}
           <div className="flex items-center gap-8">
             <div>
-              <p className="font-body text-[10px] tracking-[0.15em] uppercase mb-1" style={{ color: '#888' }}>
+              <p className="font-body text-[10px] tracking-[0.15em] uppercase mb-1" style={{ color: 'var(--clr-muted)' }}>
                 Instant Limit
               </p>
-              <p className="font-display text-xl tabular-nums" style={{ color: '#ccc', letterSpacing: '-1px' }}>
+              <p className="font-display text-xl tabular-nums" style={{ color: 'var(--clr-text-dim)', letterSpacing: '-1px' }}>
                 {instantWithdrawLimit.toFixed(2)}
-                <span className="font-body text-xs ml-1" style={{ color: '#888' }}>MON</span>
+                <span className="font-body text-xs ml-1" style={{ color: 'var(--clr-muted)' }}>MON</span>
               </p>
             </div>
 
             <div>
-              <p className="font-body text-[10px] tracking-[0.15em] uppercase mb-1" style={{ color: '#888' }}>
+              <p className="font-body text-[10px] tracking-[0.15em] uppercase mb-1" style={{ color: 'var(--clr-muted)' }}>
                 Status
               </p>
               {locked ? (
@@ -70,12 +70,12 @@ export default function VaultInfo() {
             const thresholdPct = vaultBalance > 0 ? Math.min((instantWithdrawLimit / vaultBalance) * 100, 100) : 0
             return (
               <>
-                <div className="flex justify-between font-body text-[10px] tracking-widest uppercase" style={{ color: '#666' }}>
+                <div className="flex justify-between font-body text-[10px] tracking-widest uppercase" style={{ color: 'var(--clr-muted)' }}>
                   <span>0%</span>
                   <span>Instant Threshold — {thresholdPct.toFixed(0)}%</span>
                   <span>100%</span>
                 </div>
-                <div className="h-px w-full" style={{ background: '#1a1a1a' }}>
+                <div className="h-px w-full" style={{ background: 'var(--clr-border)' }}>
                   <div className="h-full transition-all duration-700" style={{ width: `${thresholdPct}%`, background: 'linear-gradient(90deg, #FF6B2B, #CAFF00)' }} />
                 </div>
               </>

@@ -9,6 +9,8 @@ export default function SafeAddressCard() {
     requestSafeAddress,
     withdrawToSafeAddress,
     vaultBalance,
+    isEmergencyLocked,
+    pendingWithdrawal,
   } = useVault()
 
   const [inputAddress, setInputAddress] = useState('')
@@ -16,8 +18,10 @@ export default function SafeAddressCard() {
   const [isWithdrawing, setIsWithdrawing] = useState(false)
   const [error, setError] = useState('')
 
-  // If there's already a pending change, don't show the input form
+  const locked = isEmergencyLocked()
   const hasPending = pendingSafeAddress !== null
+  const hasPendingWithdraw = pendingWithdrawal !== null
+  const withdrawToSafeDisabled = locked || hasPendingWithdraw
 
   const isValidAddress = (addr) => {
     try {
@@ -40,7 +44,7 @@ export default function SafeAddressCard() {
       setInputAddress('')
     } catch (err) {
       console.error('requestSafeAddress failed:', err)
-      setError('Failed to submit. Please try again.')
+      setError('Transaction failed. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
@@ -59,7 +63,6 @@ export default function SafeAddressCard() {
 
   return (
     <div className="card relative overflow-hidden">
-      {/* Subtle tint */}
       <div className="absolute -top-12 -right-12 w-28 h-28 bg-vault-accent/3 rounded-full blur-2xl pointer-events-none" />
 
       <div className="relative">
@@ -72,7 +75,7 @@ export default function SafeAddressCard() {
           </p>
         </div>
 
-        {/* Approved safe address display */}
+        {/* Current safe address display */}
         {safeAddress && (
           <div className="mb-4 p-3 bg-vault-surface border border-vault-accent/20 rounded-xl">
             <p className="text-vault-muted text-[10px] font-body tracking-[0.12em] uppercase mb-1">
@@ -84,7 +87,7 @@ export default function SafeAddressCard() {
           </div>
         )}
 
-        {/* Input — only show if no pending change */}
+        {/* Input — only show if no pending safe change */}
         {!hasPending && (
           <div className="space-y-3">
             <div>
@@ -114,23 +117,42 @@ export default function SafeAddressCard() {
                   Submitting…
                 </>
               ) : (
-                safeAddress ? 'Update Safe Address' : 'Set Safe Address'
+                safeAddress ? 'Request Address Change' : 'Set Safe Address'
               )}
             </button>
 
             <p className="text-vault-muted text-[10px] font-body text-center leading-relaxed">
-              Address change requires a <strong className="text-vault-text-dim">24h timelock</strong> before activation.
+              {safeAddress
+                ? <>Address change requires a <strong className="text-vault-text-dim">24h timelock</strong> before activation.</>
+                : <>Set once — future changes require a <strong className="text-vault-text-dim">24h timelock</strong>.</>
+              }
             </p>
           </div>
         )}
 
-        {/* Withdraw to safe address — only when address is set and no pending withdrawal */}
-        {safeAddress && !hasPending && vaultBalance > 0 && (
+        {/* Pending change notice */}
+        {hasPending && (
+          <div className="p-3 bg-vault-surface border border-vault-warning/20 rounded-xl">
+            <p className="text-vault-muted text-[10px] font-body tracking-[0.12em] uppercase mb-1">
+              Pending Change
+            </p>
+            <p className="font-body text-xs text-vault-text-dim break-all">
+              {pendingSafeAddress.address}
+            </p>
+            <p className="font-body text-[10px] text-vault-muted mt-1">
+              See the pending card below to confirm or cancel.
+            </p>
+          </div>
+        )}
+
+        {/* Withdraw to safe — only when address is set and no pending safe change */}
+        {safeAddress && !hasPending && (
           <div className="mt-4 pt-4 border-t border-vault-border/40">
             <button
               onClick={handleWithdrawToSafe}
-              disabled={isWithdrawing}
+              disabled={isWithdrawing || withdrawToSafeDisabled}
               className="btn-secondary w-full flex items-center justify-center gap-2"
+              title={locked ? 'Vault is emergency locked' : hasPendingWithdraw ? 'Cancel pending withdrawal first' : ''}
             >
               {isWithdrawing ? (
                 <>
@@ -150,9 +172,16 @@ export default function SafeAddressCard() {
                 </>
               )}
             </button>
-            <p className="text-vault-muted text-[10px] font-body mt-2 text-center">
-              Instant execution — bypasses timelock for trusted address.
-            </p>
+            {withdrawToSafeDisabled && !isWithdrawing && (
+              <p className="text-vault-danger text-[10px] font-body mt-2 text-center">
+                {locked ? 'Unavailable while vault is locked.' : 'Cancel pending withdrawal first.'}
+              </p>
+            )}
+            {!withdrawToSafeDisabled && (
+              <p className="text-vault-muted text-[10px] font-body mt-2 text-center">
+                Sends full vault balance to trusted address — bypasses timelock.
+              </p>
+            )}
           </div>
         )}
       </div>

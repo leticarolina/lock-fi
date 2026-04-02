@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { PrivyProvider } from '@privy-io/react-auth'
 import App from './App.jsx'
 import { VaultProvider } from './context/VaultContext.jsx'
+import { ThemeProvider } from './context/ThemeContext.jsx'
 import './index.css'
 
 const monadTestnet = {
@@ -51,9 +52,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         supportedChains: [monadTestnet],
       }}
     >
-      <VaultProvider>
-        <App />
-      </VaultProvider>
+      <ThemeProvider>
+        <VaultProvider>
+          <App />
+        </VaultProvider>
+      </ThemeProvider>
     </PrivyProvider>
   </React.StrictMode>,
 )

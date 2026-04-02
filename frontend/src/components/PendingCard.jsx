@@ -91,7 +91,7 @@ export default function PendingCard() {
             <p className="text-vault-muted text-[10px] font-body tracking-[0.12em] uppercase">
               Amount
             </p>
-            <p className="font-display tabular-nums" style={{ fontSize: '1.8rem', letterSpacing: '-1px', color: '#E8E8E8' }}>
+            <p className="font-display tabular-nums" style={{ fontSize: '1.8rem', letterSpacing: '-1px', color: 'var(--clr-text)' }}>
               {pendingWithdrawal.amount.toFixed(2)}
             </p>
             <p className="font-body text-[11px] text-vault-accent">MON</p>
@@ -102,7 +102,7 @@ export default function PendingCard() {
             <p className="text-vault-muted text-[10px] font-body tracking-[0.12em] uppercase">
               Unlocks In
             </p>
-            <p className="font-display tabular-nums" style={{ fontSize: '1.8rem', letterSpacing: '-1px', color: isComplete ? '#CAFF00' : '#f59e0b' }}>
+            <p className="font-display tabular-nums" style={{ fontSize: '1.8rem', letterSpacing: '-1px', color: isComplete ? 'var(--clr-accent-label)' : '#f59e0b' }}>
               {isComplete ? '00:00' : formatted}
             </p>
             <p className="font-body text-[11px] text-vault-muted">

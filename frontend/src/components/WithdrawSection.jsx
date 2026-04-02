@@ -39,10 +39,10 @@ export default function WithdrawSection({ disabled, emergencyLocked, postLockBlo
         </p>
         <div style={{
           display: 'flex', flexDirection: 'column', alignItems: 'center',
-          padding: '12px 24px', backgroundColor: '#0d0d0d',
-          border: '1px solid #2a2a2a', marginTop: 4,
+          padding: '12px 24px', backgroundColor: 'var(--clr-deep)',
+          border: '1px solid var(--clr-border-soft)', marginTop: 4,
         }}>
-          <p style={{ color: '#555', fontSize: 10, fontFamily: 'Space Mono', letterSpacing: '0.15em', textTransform: 'uppercase', margin: 0, marginBottom: 4 }}>
+          <p style={{ color: 'var(--clr-muted)', fontSize: 10, fontFamily: 'Space Mono', letterSpacing: '0.15em', textTransform: 'uppercase', margin: 0, marginBottom: 4 }}>
             Unlocks In
           </p>
           <p style={{ color: '#ef4444', fontSize: 28, fontFamily: 'Archivo Black', letterSpacing: '0.05em', fontVariantNumeric: 'tabular-nums', margin: 0 }}>
