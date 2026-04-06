@@ -1,5 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import { BrowserRouter } from 'react-router-dom'
 import { PrivyProvider } from '@privy-io/react-auth'
 import App from './App.jsx'
 import { VaultProvider } from './context/VaultContext.jsx'
@@ -54,7 +55,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     >
       <ThemeProvider>
         <VaultProvider>
-          <App />
+          <BrowserRouter>
+            <App />
+          </BrowserRouter>
         </VaultProvider>
       </ThemeProvider>
     </PrivyProvider>

@@ -84,7 +84,9 @@ export default function Dashboard({ onGoHome }) {
           ◆ Built on Monad
         </span>
         <span style={{ fontSize: '0.6rem', letterSpacing: '2px', color: 'var(--clr-muted)', textTransform: 'uppercase', fontFamily: "'Space Mono', monospace" }}>
-          Leticia Azevedo &amp; Shaiane Viana
+          <a href="https://x.com/letiweb3" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>Leticia Azevedo</a>
+          {' & '}
+          <a href="https://x.com/shaianeviana" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>Shaiane Viana</a>
         </span>
       </footer>
     </div>

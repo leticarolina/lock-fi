@@ -1,5 +1,19 @@
 import React from 'react'
 
+/* ── Isometric cube shadow (diamond footprint) ─────────────────── */
+function CubeShadow({ cx, cy, s, opacity = 0.10 }) {
+  const dx = s * 0.866
+  const dy = s * 0.5
+  const points = `${cx},${cy+s} ${cx+dx},${cy+dy+s} ${cx},${cy+2*s} ${cx-dx},${cy+dy+s}`
+  return (
+    <polygon
+      points={points}
+      fill={`rgba(0,0,0,${opacity})`}
+      style={{ filter: 'blur(3px)' }}
+    />
+  )
+}
+
 /* ── Isometric cube helper ─────────────────────────────────────── */
 function IsoCube({ cx, cy, s, top, right, left, style = {}, children }) {
   const dx = s * 0.866
@@ -21,13 +35,13 @@ function IsoCube({ cx, cy, s, top, right, left, style = {}, children }) {
 function CubeScene() {
   return (
     <svg
-      viewBox="0 0 640 480"
+      viewBox="0 0 760 560"
       style={{ width: '100%', height: '100%', overflow: 'visible' }}
       xmlns="http://www.w3.org/2000/svg"
     >
       <defs>
-        <filter id="glow-green" x="-40%" y="-40%" width="180%" height="180%">
-          <feGaussianBlur stdDeviation="10" result="blur" />
+        <filter id="glow-green" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="12" result="blur" />
           <feMerge><feMergeNode in="blur" /><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
         </filter>
         <filter id="glow-orange" x="-40%" y="-40%" width="180%" height="180%">
@@ -37,59 +51,90 @@ function CubeScene() {
         <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
           <feDropShadow dx="0" dy="6" stdDeviation="8" floodColor="rgba(0,0,0,0.12)" />
         </filter>
-
+        <filter id="shield-glow" x="-60%" y="-60%" width="320%" height="320%">
+          <feGaussianBlur stdDeviation="16" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+        <filter id="cube-green-glow" x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="6" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+        <radialGradient id="pulse-grad" cx="50%" cy="50%" r="50%">
+          <stop offset="0%"   stopColor="#7EE040" stopOpacity="0.28" />
+          <stop offset="60%"  stopColor="#7EE040" stopOpacity="0.08" />
+          <stop offset="100%" stopColor="#7EE040" stopOpacity="0" />
+        </radialGradient>
       </defs>
 
-      {/* — shadow ellipses — */}
-      <ellipse cx="400" cy="380" rx="55" ry="14" fill="rgba(0,0,0,0.06)" />
-      <ellipse cx="530" cy="310" rx="38" ry="10" fill="rgba(0,0,0,0.05)" />
-      <ellipse cx="320" cy="330" rx="35" ry="9"  fill="rgba(0,0,0,0.05)" />
-      <ellipse cx="560" cy="210" rx="32" ry="8"  fill="rgba(0,0,0,0.04)" />
-      <ellipse cx="180" cy="320" rx="28" ry="7"  fill="rgba(0,0,0,0.04)" />
+      {/* — pulsing green light rings from shield center (380, 260) — */}
+      <circle cx="380" cy="260" r="90"  fill="url(#pulse-grad)" style={{ animation: 'pulseRing 3s ease-out infinite' }} />
+      <circle cx="380" cy="260" r="130" fill="url(#pulse-grad)" style={{ animation: 'pulseRing 3s ease-out infinite 1s' }} />
+      <circle cx="380" cy="260" r="170" fill="url(#pulse-grad)" style={{ animation: 'pulseRing 3s ease-out infinite 2s' }} />
 
-      {/* — large orange cube (top-center-right) — */}
-      <IsoCube cx={400} cy={100} s={70}
+      {/* — steady glow core under shield — */}
+      <ellipse cx="380" cy="345" rx="48" ry="14" fill="rgba(120,220,50,0.18)" style={{ filter: 'blur(10px)' }} />
+
+      {/* — diamond shadows (orange cubes) — */}
+      <CubeShadow cx={490} cy={110} s={70} />
+      <CubeShadow cx={570} cy={175} s={48} />
+      <CubeShadow cx={540} cy={265} s={42} />
+      <CubeShadow cx={470} cy={345} s={58} />
+
+      {/* — diamond shadows (green cubes) — */}
+      <CubeShadow cx={255} cy={130} s={48} />
+      <CubeShadow cx={195} cy={235} s={40} />
+      <CubeShadow cx={290} cy={355} s={32} />
+
+      {/* — large orange cube (upper-right, close to shield) — */}
+      <IsoCube cx={490} cy={110} s={70}
         top="#F07048" right="#C04020" left="#D85530"
         style={{ filter: 'url(#shadow)', animation: 'floatA 4s ease-in-out infinite' }}
       />
 
-      {/* — medium orange cube (far right) — */}
-      <IsoCube cx={560} cy={60} s={48}
+      {/* — medium orange cube (right, close to shield) — */}
+      <IsoCube cx={570} cy={175} s={48}
         top="#EC632C" right="#B84020" left="#D25028"
         style={{ filter: 'url(#shadow)', animation: 'floatB 5s ease-in-out infinite' }}
       />
 
-      {/* — small orange cube (bottom-right) — */}
-      <IsoCube cx={545} cy={240} s={40}
+      {/* — small orange cube (right-mid, close to shield) — */}
+      <IsoCube cx={540} cy={265} s={42}
         top="#F07048" right="#B84020" left="#D25030"
         style={{ filter: 'url(#shadow)', animation: 'floatC 4.5s ease-in-out infinite' }}
       />
 
-      {/* — bottom-center orange cube — */}
-      <IsoCube cx={400} cy={265} s={58}
+      {/* — bottom-right orange cube — */}
+      <IsoCube cx={470} cy={345} s={58}
         top="#EC632C" right="#B03818" left="#CC4E22"
         style={{ filter: 'url(#shadow)', animation: 'floatA 5.5s ease-in-out infinite' }}
       />
 
-      {/* — center glowing green cube — */}
-      <IsoCube cx={285} cy={170} s={62}
-        top="#B8E860" right="#709830" left="#88BC40"
-        style={{ filter: 'url(#glow-green)', animation: 'floatB 3.8s ease-in-out infinite' }}
-      />
-
-      {/* — small green cube (top-left area) — */}
-      <IsoCube cx={185} cy={155} s={38}
+      {/* — small green cube (upper-left, close to shield) — */}
+      <IsoCube cx={255} cy={130} s={48}
         top="#A8D860" right="#688030" left="#80A840"
-        style={{ filter: 'url(#shadow)', animation: 'floatC 6s ease-in-out infinite' }}
+        style={{ filter: 'url(#cube-green-glow)', animation: 'floatC 6s ease-in-out infinite' }}
       />
 
-      {/* — tiny green cube (bottom-left) — */}
-      <IsoCube cx={170} cy={260} s={28}
+      {/* — medium green cube (left, close to shield) — */}
+      <IsoCube cx={195} cy={235} s={40}
+        top="#B8E860" right="#709830" left="#88BC40"
+        style={{ filter: 'url(#cube-green-glow)', animation: 'floatB 3.8s ease-in-out infinite' }}
+      />
+
+      {/* — tiny green cube (below-left, close to shield) — */}
+      <IsoCube cx={290} cy={355} s={32}
         top="#B0DC68" right="#709038" left="#88B048"
-        style={{ filter: 'url(#shadow)', animation: 'floatA 4.2s ease-in-out infinite' }}
+        style={{ filter: 'url(#cube-green-glow)', animation: 'floatA 4.2s ease-in-out infinite' }}
       />
 
-
+      {/* — SHIELD centered — */}
+      <image
+        href="/escudo.png"
+        x={285} y={165}
+        width={190} height={190}
+        style={{ filter: 'url(#shield-glow)', animation: 'floatB 4.5s ease-in-out infinite' }}
+        preserveAspectRatio="xMidYMid meet"
+      />
     </svg>
   )
 }
@@ -110,6 +155,10 @@ export default function LandingScreen({ onLaunch }) {
         @keyframes floatC {
           0%, 100% { transform: translateY(0px); }
           50%       { transform: translateY(-7px); }
+        }
+        @keyframes pulseRing {
+          0%   { transform: scale(0.6); opacity: 0.7; }
+          100% { transform: scale(1.8); opacity: 0; }
         }
         @keyframes marquee {
           0%   { transform: translateX(0); }
@@ -561,7 +610,11 @@ export default function LandingScreen({ onLaunch }) {
         <footer className="lp-footer">
           <span className="lp-footer-text">© 2026 LockFi Protocol</span>
           <span className="lp-footer-text" style={{ color: '#ec632c' }}>◆ Built on Monad</span>
-          <span className="lp-footer-text">Leticia Azevedo &amp; Shaiane Viana</span>
+          <span className="lp-footer-text">
+            <a href="https://x.com/letiweb3" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>Leticia Azevedo</a>
+            {' & '}
+            <a href="https://x.com/shaianeviana" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>Shaiane Viana</a>
+          </span>
         </footer>
       </div>
     </>
