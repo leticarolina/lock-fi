@@ -9,11 +9,11 @@ export default function VaultInfo() {
     <div className="card relative overflow-hidden">
       {/* Corner accent */}
       <div className="absolute top-0 right-0 w-32 h-32 pointer-events-none"
-        style={{ background: 'radial-gradient(circle at top right, rgba(255,107,43,0.06), transparent 70%)' }} />
+        style={{ background: 'radial-gradient(circle at top right, rgba(236,99,44,0.06), transparent 70%)' }} />
 
       <div className="relative">
         {/* Section label */}
-        <p className="font-body text-[10px] tracking-[0.2em] uppercase mb-3" style={{ color: '#FF6B2B' }}>
+        <p className="font-body text-[10px] tracking-[0.2em] uppercase mb-3" style={{ color: '#ec632c' }}>
           // Vault Balance
         </p>
 
@@ -56,8 +56,8 @@ export default function VaultInfo() {
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#CAFF00' }} />
-                  <span className="font-body text-xs tracking-widest uppercase" style={{ color: '#CAFF00' }}>Secure</span>
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#697f42' }} />
+                  <span className="font-body text-xs tracking-widest uppercase" style={{ color: '#697f42' }}>Secure</span>
                 </div>
               )}
             </div>
@@ -76,7 +76,7 @@ export default function VaultInfo() {
                   <span>100%</span>
                 </div>
                 <div className="h-px w-full" style={{ background: 'var(--clr-border)' }}>
-                  <div className="h-full transition-all duration-700" style={{ width: `${thresholdPct}%`, background: 'linear-gradient(90deg, #FF6B2B, #CAFF00)' }} />
+                  <div className="h-full transition-all duration-700" style={{ width: `${thresholdPct}%`, background: 'linear-gradient(90deg, #ec632c, #697f42)' }} />
                 </div>
               </>
             )

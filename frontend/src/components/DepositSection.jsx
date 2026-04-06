@@ -22,7 +22,7 @@ export default function DepositSection() {
   return (
     <div className="card h-full flex flex-col">
       <div className="mb-5">
-        <p className="font-body text-[10px] tracking-[0.2em] uppercase mb-1" style={{ color: '#FF6B2B' }}>// Action</p>
+        <p className="font-body text-[10px] tracking-[0.2em] uppercase mb-1" style={{ color: '#ec632c' }}>// Action</p>
         <h3 className="font-display text-lg text-vault-text tracking-tight">Deposit MON</h3>
       </div>
 

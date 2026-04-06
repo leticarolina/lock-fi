@@ -16,7 +16,7 @@ export default function Dashboard({ onGoHome }) {
   const hasPendingSafe = pendingSafeAddress !== null
 
   return (
-    <div className="min-h-screen" style={{ paddingBottom: '64px' }}>
+    <div className="min-h-screen" style={{ paddingBottom: '64px', background: '#F5F0EB' }}>
       <Header onGoHome={onGoHome} />
 
       <main className="max-w-2xl mx-auto px-4 sm:px-6 pt-8 space-y-6">
@@ -66,21 +66,21 @@ export default function Dashboard({ onGoHome }) {
         bottom: 0,
         left: 0,
         right: 0,
-        borderTop: '1px solid #222',
+        borderTop: '1px solid rgba(160,120,80,0.15)',
         padding: '14px 40px',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         flexWrap: 'wrap',
         gap: 12,
-        background: 'var(--clr-footer-bg)',
+        background: 'rgba(245,240,235,0.95)',
         backdropFilter: 'blur(12px)',
         zIndex: 40,
       }}>
         <span style={{ fontSize: '0.6rem', letterSpacing: '2px', color: 'var(--clr-muted)', textTransform: 'uppercase', fontFamily: "'Space Mono', monospace" }}>
           © 2026 LockFi Protocol
         </span>
-        <span style={{ color: '#CAFF00', fontSize: '0.65rem', letterSpacing: '3px', fontFamily: "'Space Mono', monospace" }}>
+        <span style={{ color: '#ec632c', fontSize: '0.65rem', letterSpacing: '3px', fontFamily: "'Space Mono', monospace" }}>
           ◆ Built on Monad
         </span>
         <span style={{ fontSize: '0.6rem', letterSpacing: '2px', color: 'var(--clr-muted)', textTransform: 'uppercase', fontFamily: "'Space Mono', monospace" }}>

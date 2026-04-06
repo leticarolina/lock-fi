@@ -17,12 +17,12 @@ export default {
           'text-dim':   'var(--clr-text-dim)',
           muted:        'var(--clr-muted)',
           // Static accent colors (opacity modifiers work)
-          accent:       '#FF6B2B',
-          'accent-dim': '#e55a1f',
-          'accent-glow':'rgba(255,107,43,0.15)',
+          accent:       '#ec632c',
+          'accent-dim': '#c44e1e',
+          'accent-glow':'rgba(236,99,44,0.15)',
           warning:      '#f59e0b',
           'warning-glow':'rgba(245,158,11,0.15)',
-          green:        '#CAFF00',
+          green:        '#697f42',
           danger:       '#ef4444',
           'danger-glow':'rgba(239,68,68,0.12)',
         }
@@ -41,8 +41,8 @@ export default {
       },
       keyframes: {
         pulseGlow: {
-          '0%, 100%': { boxShadow: '0 0 20px rgba(255,107,43,0.2)' },
-          '50%':      { boxShadow: '0 0 40px rgba(255,107,43,0.4)' },
+          '0%, 100%': { boxShadow: '0 0 20px rgba(236,99,44,0.2)' },
+          '50%':      { boxShadow: '0 0 40px rgba(236,99,44,0.4)' },
         },
         fadeUp: {
           '0%':   { opacity: '0', transform: 'translateY(24px)' },

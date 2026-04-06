@@ -20,9 +20,9 @@ export default function App() {
           <div className="noise-overlay" />
           <div className="fixed inset-0 grid-bg pointer-events-none" />
           <div className="gradient-blob w-[500px] h-[500px] top-[-150px] left-[-150px] fixed"
-            style={{ background: 'rgba(255,107,43,0.05)' }} />
+            style={{ background: 'rgba(236,99,44,0.05)' }} />
           <div className="gradient-blob w-[400px] h-[400px] bottom-[-100px] right-[-100px] fixed"
-            style={{ background: 'rgba(202,255,0,0.04)' }} />
+            style={{ background: 'rgba(105,127,66,0.04)' }} />
         </>
       )}
 

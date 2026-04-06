@@ -68,7 +68,7 @@ export default function SafeAddressCard() {
       <div className="relative">
         {/* Header */}
         <div className="mb-5">
-          <p className="font-body text-[10px] tracking-[0.2em] uppercase mb-1" style={{ color: '#FF6B2B' }}>// Trusted Destination</p>
+          <p className="font-body text-[10px] tracking-[0.2em] uppercase mb-1" style={{ color: '#ec632c' }}>// Trusted Destination</p>
           <h3 className="font-display text-lg text-vault-text tracking-tight">Safe Address</h3>
           <p className="text-vault-muted text-[10px] font-body mt-0.5 tracking-wider">
             Instant withdrawal to trusted wallet

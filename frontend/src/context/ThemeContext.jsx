@@ -1,21 +1,15 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useEffect } from 'react'
 
 const ThemeContext = createContext(null)
 
 export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState(() => {
-    return localStorage.getItem('lockfi_theme') || 'dark'
-  })
-
   useEffect(() => {
-    document.documentElement.dataset.theme = theme
-    localStorage.setItem('lockfi_theme', theme)
-  }, [theme])
-
-  const toggleTheme = () => setTheme(t => (t === 'dark' ? 'light' : 'dark'))
+    document.documentElement.dataset.theme = 'light'
+    localStorage.setItem('lockfi_theme', 'light')
+  }, [])
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme: 'light', toggleTheme: () => {} }}>
       {children}
     </ThemeContext.Provider>
   )

@@ -60,7 +60,7 @@ function DurationSelector({ value, onChange }) {
         <span style={{
           fontFamily: 'Archivo Black',
           fontSize: 14,
-          color: '#FF6B2B',
+          color: '#ec632c',
           letterSpacing: '0.03em',
         }}>
           {label}
@@ -77,7 +77,7 @@ function DurationSelector({ value, onChange }) {
           width: `${filledPercent}%`,
           height: 4,
           borderRadius: 2,
-          background: 'linear-gradient(90deg, #FF6B2B, #CAFF00)',
+          background: 'linear-gradient(90deg, #ec632c, #697f42)',
           pointerEvents: 'none',
           zIndex: 1,
         }} />
@@ -107,10 +107,10 @@ function DurationSelector({ value, onChange }) {
                 fontSize: '0.62rem',
                 fontFamily: 'Space Mono',
                 letterSpacing: '0.06em',
-                background: active ? 'rgba(255,107,43,0.15)' : 'transparent',
-                border: active ? '1px solid rgba(255,107,43,0.55)' : '1px solid var(--clr-border-soft)',
+                background: active ? 'rgba(236,99,44,0.15)' : 'transparent',
+                border: active ? '1px solid rgba(236,99,44,0.55)' : '1px solid var(--clr-border-soft)',
                 borderRadius: 6,
-                color: active ? '#FF6B2B' : 'var(--clr-muted)',
+                color: active ? '#ec632c' : 'var(--clr-muted)',
                 cursor: 'pointer',
                 transition: 'all 0.15s',
               }}
@@ -390,8 +390,8 @@ export default function EmergencyLockCard() {
               width: 18,
               height: 18,
               borderRadius: 4,
-              border: acknowledged ? '1.5px solid #FF6B2B' : '1.5px solid #444',
-              backgroundColor: acknowledged ? 'rgba(255,107,43,0.15)' : 'transparent',
+              border: acknowledged ? '1.5px solid #ec632c' : '1.5px solid #444',
+              backgroundColor: acknowledged ? 'rgba(236,99,44,0.15)' : 'transparent',
               flexShrink: 0,
               marginTop: 1,
               display: 'flex',
@@ -402,7 +402,7 @@ export default function EmergencyLockCard() {
             }}
           >
             {acknowledged && (
-              <svg style={{ width: 10, height: 10, color: '#FF6B2B' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <svg style={{ width: 10, height: 10, color: '#ec632c' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             )}
@@ -420,38 +420,7 @@ export default function EmergencyLockCard() {
         <button
           onClick={handleActivate}
           disabled={!acknowledged || isActivating}
-          style={{
-            width: '100%',
-            padding: '12px 16px',
-            fontFamily: 'Archivo Black',
-            fontSize: '0.7rem',
-            letterSpacing: '0.06em',
-            textTransform: 'uppercase',
-            background: acknowledged ? '#FF6B2B' : '#1a1a1a',
-            color: acknowledged ? '#0A0A0A' : '#444',
-            border: acknowledged ? 'none' : '1px solid var(--clr-border-soft)',
-            clipPath: acknowledged
-              ? 'polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))'
-              : 'none',
-            borderRadius: acknowledged ? 0 : 8,
-            cursor: acknowledged && !isActivating ? 'pointer' : 'not-allowed',
-            opacity: isActivating ? 0.6 : 1,
-            transition: 'background 0.2s, color 0.2s',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-          }}
-          onMouseEnter={e => {
-            if (acknowledged && !isActivating) {
-              e.currentTarget.style.background = '#CAFF00'
-              e.currentTarget.style.boxShadow = '0 0 40px rgba(202,255,0,0.3)'
-            }
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = acknowledged ? '#FF6B2B' : '#1a1a1a'
-            e.currentTarget.style.boxShadow = 'none'
-          }}
+          className="btn-primary w-full flex items-center justify-center gap-2"
         >
           {isActivating ? (
             <>

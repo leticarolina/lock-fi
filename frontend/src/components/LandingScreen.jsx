@@ -1,16 +1,115 @@
 import React from 'react'
-import { useTheme } from '../context/ThemeContext.jsx'
 
+/* ── Isometric cube helper ─────────────────────────────────────── */
+function IsoCube({ cx, cy, s, top, right, left, style = {}, children }) {
+  const dx = s * 0.866
+  const dy = s * 0.5
+  const topPath  = `M${cx},${cy} L${cx+dx},${cy+dy} L${cx},${cy+s} L${cx-dx},${cy+dy} Z`
+  const rightPath = `M${cx+dx},${cy+dy} L${cx+dx},${cy+dy+s} L${cx},${cy+2*s} L${cx},${cy+s} Z`
+  const leftPath  = `M${cx-dx},${cy+dy} L${cx},${cy+s} L${cx},${cy+2*s} L${cx-dx},${cy+dy+s} Z`
+  return (
+    <g style={style}>
+      <path d={leftPath}  fill={left} />
+      <path d={rightPath} fill={right} />
+      <path d={topPath}   fill={top} />
+      {children}
+    </g>
+  )
+}
+
+/* ── Scene with floating isometric cubes ──────────────────────── */
+function CubeScene() {
+  return (
+    <svg
+      viewBox="0 0 640 480"
+      style={{ width: '100%', height: '100%', overflow: 'visible' }}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <defs>
+        <filter id="glow-green" x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="10" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+        <filter id="glow-orange" x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="8" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+        <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
+          <feDropShadow dx="0" dy="6" stdDeviation="8" floodColor="rgba(0,0,0,0.12)" />
+        </filter>
+
+      </defs>
+
+      {/* — shadow ellipses — */}
+      <ellipse cx="400" cy="380" rx="55" ry="14" fill="rgba(0,0,0,0.06)" />
+      <ellipse cx="530" cy="310" rx="38" ry="10" fill="rgba(0,0,0,0.05)" />
+      <ellipse cx="320" cy="330" rx="35" ry="9"  fill="rgba(0,0,0,0.05)" />
+      <ellipse cx="560" cy="210" rx="32" ry="8"  fill="rgba(0,0,0,0.04)" />
+      <ellipse cx="180" cy="320" rx="28" ry="7"  fill="rgba(0,0,0,0.04)" />
+
+      {/* — large orange cube (top-center-right) — */}
+      <IsoCube cx={400} cy={100} s={70}
+        top="#F07048" right="#C04020" left="#D85530"
+        style={{ filter: 'url(#shadow)', animation: 'floatA 4s ease-in-out infinite' }}
+      />
+
+      {/* — medium orange cube (far right) — */}
+      <IsoCube cx={560} cy={60} s={48}
+        top="#EC632C" right="#B84020" left="#D25028"
+        style={{ filter: 'url(#shadow)', animation: 'floatB 5s ease-in-out infinite' }}
+      />
+
+      {/* — small orange cube (bottom-right) — */}
+      <IsoCube cx={545} cy={240} s={40}
+        top="#F07048" right="#B84020" left="#D25030"
+        style={{ filter: 'url(#shadow)', animation: 'floatC 4.5s ease-in-out infinite' }}
+      />
+
+      {/* — bottom-center orange cube — */}
+      <IsoCube cx={400} cy={265} s={58}
+        top="#EC632C" right="#B03818" left="#CC4E22"
+        style={{ filter: 'url(#shadow)', animation: 'floatA 5.5s ease-in-out infinite' }}
+      />
+
+      {/* — center glowing green cube — */}
+      <IsoCube cx={285} cy={170} s={62}
+        top="#B8E860" right="#709830" left="#88BC40"
+        style={{ filter: 'url(#glow-green)', animation: 'floatB 3.8s ease-in-out infinite' }}
+      />
+
+      {/* — small green cube (top-left area) — */}
+      <IsoCube cx={185} cy={155} s={38}
+        top="#A8D860" right="#688030" left="#80A840"
+        style={{ filter: 'url(#shadow)', animation: 'floatC 6s ease-in-out infinite' }}
+      />
+
+      {/* — tiny green cube (bottom-left) — */}
+      <IsoCube cx={170} cy={260} s={28}
+        top="#B0DC68" right="#709038" left="#88B048"
+        style={{ filter: 'url(#shadow)', animation: 'floatA 4.2s ease-in-out infinite' }}
+      />
+
+
+    </svg>
+  )
+}
+
+/* ── Main component ───────────────────────────────────────────── */
 export default function LandingScreen({ onLaunch }) {
-  const { theme, toggleTheme } = useTheme()
-  const isLight = theme === 'light'
-
   return (
     <>
       <style>{`
-        @keyframes floatIcon {
-          0%, 100% { transform: translateY(0); }
+        @keyframes floatA {
+          0%, 100% { transform: translateY(0px); }
           50%       { transform: translateY(-10px); }
+        }
+        @keyframes floatB {
+          0%, 100% { transform: translateY(0px); }
+          50%       { transform: translateY(-14px); }
+        }
+        @keyframes floatC {
+          0%, 100% { transform: translateY(0px); }
+          50%       { transform: translateY(-7px); }
         }
         @keyframes marquee {
           0%   { transform: translateX(0); }
@@ -20,492 +119,449 @@ export default function LandingScreen({ onLaunch }) {
           to { opacity: 1; transform: translateY(0); }
         }
 
-        .landing-wrap {
-          position: relative;
+        /* ── GLOBAL ── */
+        .lp-wrap {
           min-height: 100vh;
-          background: var(--clr-bg);
-          color: var(--clr-text);
+          background: #F5F0EB;
+          color: #1C1A15;
           font-family: 'Space Mono', monospace;
           overflow-x: hidden;
-          cursor: crosshair;
-          transition: background 0.25s ease, color 0.25s ease;
+        }
+
+        /* ── DIAMOND GRID BG ── */
+        .lp-grid {
+          position: fixed;
+          inset: 0;
+          pointer-events: none;
+          z-index: 0;
+          background-image:
+            linear-gradient(45deg, rgba(160,120,80,0.10) 1px, transparent 1px),
+            linear-gradient(-45deg, rgba(160,120,80,0.10) 1px, transparent 1px);
+          background-size: 48px 48px;
         }
 
         /* ── NAV ── */
-        .landing-nav {
+        .lp-nav {
           position: fixed; top: 0; left: 0; right: 0; z-index: 50;
           display: flex; justify-content: space-between; align-items: center;
-          padding: 16px 20px;
-          backdrop-filter: blur(20px);
-          background: var(--clr-nav-bg);
-          border-bottom: 1px solid var(--clr-border);
-          transition: background 0.25s ease;
+          padding: 16px 28px;
+          background: rgba(245,240,235,0.90);
+          backdrop-filter: blur(16px);
+          border-bottom: 1px solid rgba(160,120,80,0.15);
         }
-        @media (min-width: 640px) {
-          .landing-nav { padding: 20px 40px; }
+        @media (min-width: 768px) { .lp-nav { padding: 18px 48px; } }
+
+        .lp-nav-logo {
+          height: clamp(26px, 3.5vw, 34px);
+          width: auto;
         }
 
-        .nav-theme-btn {
-          padding: 8px 12px;
-          font-family: 'Space Mono', monospace;
-          font-size: 0.75rem;
-          text-transform: uppercase;
-          letter-spacing: 2px;
-          border: 1px solid var(--clr-border);
-          color: var(--clr-text);
-          background: transparent;
-          cursor: pointer;
-          transition: all 0.2s;
-          border-radius: 4px;
-          display: flex; align-items: center; gap: 6px;
-        }
-        .nav-theme-btn:hover {
-          border-color: #FF6B2B;
-          color: #FF6B2B;
-        }
-        .nav-explore-btn {
+        .lp-nav-btns { display: flex; gap: 10px; align-items: center; }
+
+        .lp-btn-filled {
           font-family: 'Space Mono', monospace;
           font-size: 0.7rem;
+          letter-spacing: 1.5px;
           text-transform: uppercase;
-          letter-spacing: 2px;
-          border: 1px solid var(--clr-border);
-          color: var(--clr-text);
-          background: transparent;
-          padding: 8px 20px;
+          padding: 9px 20px;
+          background: #697f42;
+          color: #F5F0EB;
+          border: 1.5px solid #697f42;
           cursor: pointer;
-          transition: all 0.3s;
-          position: relative;
-          overflow: hidden;
+          border-radius: 4px;
+          transition: all 0.2s;
+          white-space: nowrap;
         }
-        .nav-explore-btn::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background: #CAFF00;
-          transform: translateX(-101%);
-          transition: transform 0.3s;
+        .lp-btn-filled:hover {
+          background: #4e6030;
+          border-color: #4e6030;
         }
-        .nav-explore-btn:hover { border-color: #CAFF00; color: #0A0A0A; }
-        .nav-explore-btn:hover::before { transform: translateX(0); }
-        .nav-explore-btn span { position: relative; z-index: 1; }
 
         /* ── HERO ── */
-        .landing-hero {
+        .lp-hero {
           min-height: 100vh;
+          display: grid;
+          grid-template-columns: 1fr;
+          align-items: center;
+          padding: 80px 28px 60px;
+          position: relative;
+          z-index: 1;
+          gap: 48px;
+        }
+        @media (min-width: 768px) {
+          .lp-hero {
+            grid-template-columns: 1fr 1fr;
+            padding: 80px 48px 60px;
+            gap: 0;
+          }
+        }
+        @media (min-width: 1200px) {
+          .lp-hero { padding: 80px 80px 60px; }
+        }
+
+        /* left column */
+        .lp-hero-left {
           display: flex;
           flex-direction: column;
           justify-content: center;
-          align-items: center;
+          padding-right: 0;
+          padding-left: clamp(60px, 14vw, 180px);
           position: relative;
-          padding: clamp(80px, 14vh, 120px) 20px clamp(40px, 7vh, 80px);
-          text-align: center;
-          z-index: 1;
-        }
-
-        .landing-side-label {
-          position: absolute;
-          font-family: 'Space Mono', monospace;
-          font-size: 0.6rem;
-          letter-spacing: 3px;
-          pointer-events: none;
-          opacity: 0.35;
-          display: none;
         }
         @media (min-width: 768px) {
-          .landing-side-label { display: block; }
+          .lp-hero-left { padding-right: 40px; padding-left: clamp(120px, 18vw, 260px); }
         }
 
-        .landing-logo {
-          height: clamp(90px, 18vw, 160px);
-          width: auto;
-          margin-bottom: 8px;
-          filter: none;
-          transition: filter 0.25s;
-        }
-
-
-        .landing-subtitle {
-          font-size: clamp(0.55rem, 1.5vw, 0.65rem);
+        .lp-side-label {
+          position: absolute;
+          font-family: 'Space Mono', monospace;
+          font-size: 0.55rem;
+          letter-spacing: 4px;
           text-transform: uppercase;
-          letter-spacing: clamp(3px, 1.5vw, 8px);
-          color: var(--clr-text-dim);
-          margin-bottom: clamp(28px, 5vh, 50px);
-          text-align: center;
-          padding: 0 10px;
+          color: #8BC34A;
+          opacity: 0.7;
+          writing-mode: vertical-rl;
+          transform: rotate(180deg);
+          left: -32px;
+          top: 50%;
+          transform: translateX(-50%) rotate(180deg);
+          display: none;
+          user-select: none;
         }
+        @media (min-width: 1100px) { .lp-side-label { display: block; } }
 
-        .landing-desc {
-          font-size: clamp(0.95rem, 2.5vw, 1.2rem);
-          max-width: 540px;
-          line-height: 1.6;
-          color: var(--clr-text);
-          margin-bottom: 8px;
-          padding: 0 16px;
-        }
-
-        .landing-desc-small {
-          font-size: 0.75rem;
-          color: var(--clr-muted);
-          margin-bottom: clamp(32px, 5vh, 50px);
-          letter-spacing: 1px;
-        }
-
-        .landing-launch-btn {
+        .lp-hero-title {
           font-family: 'Archivo Black', sans-serif;
-          font-size: clamp(0.8rem, 2.5vw, 1rem);
-          letter-spacing: clamp(2px, 0.8vw, 4px);
+          font-size: clamp(2rem, 4.5vw, 3.4rem);
+          line-height: 1.08;
+          letter-spacing: -1.5px;
+          color: #697f42;
+          margin-bottom: 22px;
+        }
+
+        .lp-hero-sub {
+          font-family: 'Space Mono', monospace;
+          font-size: clamp(0.75rem, 1.4vw, 0.88rem);
+          color: #6A6055;
+          margin-bottom: 40px;
+          line-height: 1.6;
+          max-width: 420px;
+        }
+
+        .lp-hero-actions {
+          display: flex;
+          align-items: center;
+          gap: 24px;
+          flex-wrap: wrap;
+        }
+
+        .lp-launch-btn {
+          font-family: 'Archivo Black', sans-serif;
+          font-size: clamp(0.75rem, 1.4vw, 0.88rem);
+          letter-spacing: 2px;
           text-transform: uppercase;
-          background: #FF6B2B;
-          color: #0A0A0A;
+          background: #ec632c;
+          color: #FFFFFF;
           border: none;
-          padding: clamp(14px, 2.5vw, 20px) clamp(32px, 6vw, 60px);
+          padding: clamp(14px, 2vw, 18px) clamp(28px, 4vw, 44px);
           cursor: pointer;
+          border-radius: 4px;
+          transition: all 0.25s;
+        }
+        .lp-launch-btn:hover {
+          background: #c44e1e;
+          transform: translateY(-2px);
+          box-shadow: 0 8px 24px rgba(236,99,44,0.35);
+        }
+
+        /* right column */
+        .lp-hero-right {
           position: relative;
-          overflow: hidden;
-          clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px));
-          transition: all 0.3s;
+          display: flex;
+          align-items: center;
+          justify-content: flex-start;
+          margin-left: clamp(-320px, -34vw, -160px);
+          height: clamp(340px, 50vw, 500px);
         }
-        .landing-launch-btn:hover {
-          box-shadow: 0 0 40px rgba(202,255,0,0.55), 0 0 80px rgba(202,255,0,0.25);
-          background: #CAFF00 !important;
+
+        .lp-block-label {
+          position: absolute;
+          bottom: 16px;
+          right: 0;
+          font-family: 'Space Mono', monospace;
+          font-size: 0.55rem;
+          letter-spacing: 3px;
+          color: #ec632c;
+          opacity: 0.7;
+          display: none;
         }
+        @media (min-width: 768px) { .lp-block-label { display: block; } }
 
         /* ── FEATURES BAR ── */
-        .features-bar {
+        .lp-features {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
-          gap: 1px;
-          background: var(--clr-border);
-          border-top: 1px solid var(--clr-border);
-          border-bottom: 1px solid var(--clr-border);
+          background: #EDE8E2;
+          border-top: 1px solid rgba(160,120,80,0.18);
+          border-bottom: 1px solid rgba(160,120,80,0.18);
           position: relative;
           z-index: 1;
         }
-        @media (min-width: 640px) {
-          .features-bar { grid-template-columns: repeat(4, 1fr); }
-        }
+        @media (min-width: 640px) { .lp-features { grid-template-columns: repeat(4, 1fr); } }
 
-        .feature-item {
-          background: var(--clr-bg);
-          padding: clamp(22px, 4vw, 36px) 20px;
+        .lp-feat-item {
+          padding: clamp(20px, 3.5vw, 32px) 20px;
           text-align: center;
-          transition: background 0.3s;
+          border-right: 1px solid rgba(160,120,80,0.15);
+          transition: background 0.25s;
         }
-        .feature-item:hover { background: var(--clr-surface) !important; }
-        .feature-item:hover .feat-label { color: #FF6B2B !important; }
+        .lp-feat-item:last-child { border-right: none; }
+        .lp-feat-item:hover { background: rgba(212,120,58,0.07); }
+        .lp-feat-item:hover .lp-feat-label { color: #ec632c; }
 
-        .feat-icon {
-          font-size: clamp(1.4rem, 3vw, 1.8rem);
+        .lp-feat-icon {
+          font-size: clamp(1.3rem, 2.5vw, 1.7rem);
           margin-bottom: 10px;
           display: block;
-          filter: drop-shadow(0 0 8px rgba(255,107,43,0.5));
+          color: #ec632c;
         }
-        .feat-label {
-          font-size: 0.6rem;
+        .lp-feat-label {
+          font-size: 0.58rem;
           text-transform: uppercase;
-          letter-spacing: 4px;
-          color: var(--clr-muted);
+          letter-spacing: 3px;
+          color: #888070;
           transition: color 0.2s;
         }
 
         /* ── MARQUEE ── */
-        .marquee-wrap {
+        .lp-marquee-wrap {
           overflow: hidden;
-          border-bottom: 1px solid var(--clr-border);
-          padding: 18px 0;
+          border-bottom: 1px solid rgba(160,120,80,0.15);
+          padding: 16px 0;
+          background: #F5F0EB;
           position: relative;
           z-index: 1;
-          background: var(--clr-bg);
-          transition: background 0.25s;
         }
-        .marquee-track {
+        .lp-marquee-track {
           display: flex;
-          gap: 60px;
-          animation: marquee 22s linear infinite;
+          gap: 56px;
+          animation: marquee 24s linear infinite;
           white-space: nowrap;
           width: max-content;
         }
-        .marquee-text {
+        .lp-marquee-text {
           font-family: 'Archivo Black', sans-serif;
-          font-size: 0.8rem;
-          letter-spacing: 6px;
+          font-size: 0.72rem;
+          letter-spacing: 5px;
           text-transform: uppercase;
-          color: var(--clr-muted);
+          color: #A89880;
         }
-        .marquee-accent { color: #FF6B2B; }
+        .lp-marquee-accent { color: #ec632c; }
 
         /* ── HOW IT WORKS ── */
-        .steps-section {
-          padding: clamp(60px, 8vh, 100px) clamp(16px, 5vw, 64px);
-          background: var(--clr-steps-bg);
+        .lp-steps {
+          padding: clamp(56px, 7vh, 96px) clamp(20px, 5vw, 64px);
+          background: #EDE8E2;
           position: relative;
           z-index: 1;
-          transition: background 0.25s;
         }
-        .steps-label {
-          font-size: 0.6rem;
+        .lp-steps-label {
+          font-size: 0.58rem;
           text-transform: uppercase;
-          letter-spacing: 6px;
-          color: #FF6B2B;
-          margin-bottom: 16px;
+          letter-spacing: 5px;
+          color: #ec632c;
+          margin-bottom: 14px;
           font-family: 'Space Mono', monospace;
         }
-        .steps-title {
+        .lp-steps-title {
           font-family: 'Archivo Black', sans-serif;
-          font-size: clamp(2rem, 5vw, 3.5rem);
-          letter-spacing: -2px;
-          line-height: 1;
-          margin-bottom: clamp(32px, 5vh, 56px);
-          color: var(--clr-steps-text);
+          font-size: clamp(1.8rem, 4.5vw, 3.2rem);
+          letter-spacing: -1.5px;
+          line-height: 1.05;
+          margin-bottom: clamp(28px, 4vh, 52px);
+          color: #1C1A15;
         }
-        .steps-grid {
+        .lp-steps-grid {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
           gap: 2px;
         }
-        .step-card {
-          background: var(--clr-steps-card);
-          border: 1px solid var(--clr-steps-border);
-          padding: clamp(24px, 3vw, 36px) clamp(18px, 3vw, 28px);
+        .lp-step-card {
+          background: #FAFAF8;
+          border: 1px solid #D8D3CE;
+          padding: clamp(22px, 2.8vw, 34px) clamp(16px, 2.5vw, 26px);
           position: relative;
           transition: all 0.3s;
           cursor: default;
         }
-        .step-card:hover {
-          border-color: #FF6B2B !important;
+        .lp-step-card:hover {
+          border-color: #ec632c;
           transform: translateY(-4px);
+          box-shadow: 0 8px 24px rgba(212,120,58,0.12);
         }
-        .step-num {
+        .lp-step-num {
           font-family: 'Archivo Black', sans-serif;
-          font-size: clamp(2.5rem, 5vw, 3.5rem);
-          color: #FF6B2B;
-          opacity: 0.2;
+          font-size: clamp(2.2rem, 4.5vw, 3.2rem);
+          color: #ec632c;
+          opacity: 0.18;
           line-height: 1;
-          margin-bottom: 16px;
+          margin-bottom: 14px;
           transition: opacity 0.3s;
         }
-        .step-card:hover .step-num { opacity: 0.5; }
-        .step-card-title {
+        .lp-step-card:hover .lp-step-num { opacity: 0.45; }
+        .lp-step-card-title {
           font-family: 'Archivo Black', sans-serif;
-          font-size: 0.95rem;
-          margin-bottom: 10px;
-          color: var(--clr-steps-text);
-          letter-spacing: -0.5px;
+          font-size: 0.9rem;
+          margin-bottom: 8px;
+          color: #1C1A15;
+          letter-spacing: -0.3px;
         }
-        .step-card-desc {
-          font-size: 0.75rem;
-          color: var(--clr-steps-desc);
-          line-height: 1.7;
+        .lp-step-card-desc {
+          font-size: 0.72rem;
+          color: #6A6055;
+          line-height: 1.75;
           font-family: 'Space Mono', monospace;
         }
 
         /* ── FOOTER ── */
-        .landing-footer {
-          padding: clamp(14px, 2vw, 20px) clamp(16px, 4vw, 40px);
+        .lp-footer {
+          padding: clamp(14px, 2vw, 20px) clamp(20px, 4vw, 48px);
           display: flex;
           justify-content: space-between;
           align-items: center;
-          border-top: 1px solid var(--clr-border);
+          border-top: 1px solid rgba(160,120,80,0.15);
+          background: #F5F0EB;
           position: relative;
           z-index: 1;
           flex-wrap: wrap;
           gap: 10px;
-          background: var(--clr-bg);
-          transition: background 0.25s;
         }
-        .footer-text {
-          font-size: 0.6rem;
+        .lp-footer-text {
+          font-size: 0.58rem;
           letter-spacing: 2px;
-          color: var(--clr-muted);
+          color: #A89880;
           text-transform: uppercase;
         }
-        .footer-chain {
-          color: var(--clr-accent-label);
-          font-size: 0.65rem;
-          letter-spacing: 3px;
-        }
 
-        /* ── GRID BG (landing) ── */
-        .landing-grid {
-          position: fixed;
-          inset: 0;
-          background-image:
-            linear-gradient(var(--clr-grid) 1px, transparent 1px),
-            linear-gradient(90deg, var(--clr-grid) 1px, transparent 1px);
-          background-size: 60px 60px;
-          pointer-events: none;
-          z-index: 0;
-        }
-
-        /* ── NOISE ── */
-        .landing-noise {
-          position: fixed;
-          inset: 0;
-          pointer-events: none;
-          z-index: 999;
-          opacity: 0.025;
-          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-          background-repeat: repeat;
-          background-size: 128px 128px;
-        }
-
-        .fade-in {
+        /* ── FADE IN ── */
+        .lp-fade {
           opacity: 0;
-          transform: translateY(24px);
-          animation: fadeUp 0.8s forwards;
+          transform: translateY(20px);
+          animation: fadeUp 0.7s forwards;
         }
       `}</style>
 
-      <div className="landing-wrap">
+      <div className="lp-wrap">
+        {/* grid background */}
+        <div className="lp-grid" />
+
         {/* NAV */}
-        <nav className="landing-nav">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <img
-              src="/logo_nova.svg"
-              alt="LockFi"
-              style={{ height: 'clamp(28px,4vw,36px)', width: 'auto' }}
-            />
+        <nav className="lp-nav">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <img src="/logo.svg" alt="LockFi" className="lp-nav-logo" />
+            <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '0.6rem', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#A89880' }}>
+              Secure Withdrawal Protocol
+            </span>
           </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <button className="nav-theme-btn" onClick={toggleTheme} aria-label="Toggle theme">
-              {isLight ? (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-                </svg>
-              ) : (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
-                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                  <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
-                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-                </svg>
-              )}
-              <span className="hidden sm:inline">{isLight ? 'Dark' : 'Light'}</span>
-            </button>
-            <button className="nav-explore-btn" onClick={() => document.getElementById('how-it-works').scrollIntoView({ behavior: 'smooth' })}>
-              <span>Explore</span>
+
+          <div className="lp-nav-btns">
+            <button
+              className="lp-btn-filled"
+              onClick={() => document.getElementById('how-it-works').scrollIntoView({ behavior: 'smooth' })}
+            >
+              Explore
             </button>
           </div>
         </nav>
 
-        {/* Grid + noise */}
-        <div className="landing-grid" />
-        <div className="landing-noise" />
-
         {/* HERO */}
-        <section className="landing-hero">
-          {/* Floating decorative labels — hidden on mobile */}
-          <span className="landing-side-label" style={{
-            top: '30%', left: '4%',
-            color: '#CAFF00',
-            transform: 'rotate(-90deg)',
-          }}>{'{SECURE_PROTOCOL}'}</span>
-          <span className="landing-side-label" style={{
-            bottom: '25%', right: '4%',
-            color: '#FF6B2B',
-          }}>◆ 0xLOCK</span>
+        <section className="lp-hero">
+          {/* left */}
+          <div className="lp-hero-left">
+            <span className="lp-side-label">Secure Protocol</span>
 
-          {/* Shield icon */}
-          <div className="fade-in" style={{ width: 'clamp(56px,10vw,80px)', height: 'clamp(56px,10vw,80px)', marginBottom: 'clamp(24px,4vh,40px)', animation: 'floatIcon 3s ease-in-out infinite, fadeUp 0.8s forwards', animationDelay: '0.1s' }}>
-            <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg"
-              style={{ width: '100%', height: '100%', filter: 'drop-shadow(0 0 20px rgba(255,107,43,0.55))' }}>
-              <path d="M40 8L12 22V38C12 56 24 68 40 74C56 68 68 56 68 38V22L40 8Z"
-                stroke="#FF6B2B" strokeWidth="2" fill="none" />
-              <circle cx="40" cy="38" r="8" stroke="#CAFF00" strokeWidth="2" fill="none" />
-              <line x1="40" y1="46" x2="40" y2="54" stroke="#CAFF00" strokeWidth="2" />
-            </svg>
+            <h1 className="lp-fade lp-hero-title" style={{ animationDelay: '0.1s' }}>
+              Delay suspicious<br />
+              withdrawals and<br />
+              protect your funds<br />
+              on Monad.
+            </h1>
+
+            <p className="lp-fade lp-hero-sub" style={{ animationDelay: '0.4s' }}>
+              On-chain risk detection with time-locked execution.
+            </p>
+
+            <div className="lp-fade lp-hero-actions" style={{ animationDelay: '0.55s' }}>
+              <button className="lp-launch-btn" onClick={onLaunch}>
+                Launch App
+              </button>
+            </div>
           </div>
 
-          {/* Logo */}
-          <img
-            className="fade-in landing-logo"
-            src="/logo_nova.svg"
-            alt="LockFi"
-            style={{ animationDelay: '0.3s' }}
-          />
-
-          {/* Subtitle */}
-          <p className="fade-in landing-subtitle" style={{ animationDelay: '0.45s' }}>
-            <span style={{ color: '#FF6B2B', opacity: 0.5 }}>——</span>
-            {' '}SECURE WITHDRAWAL PROTOCOL{' '}
-            <span style={{ color: '#FF6B2B', opacity: 0.5 }}>——</span>
-          </p>
-
-          {/* Desc */}
-          <p className="fade-in landing-desc" style={{ animationDelay: '0.6s' }}>
-            Delay suspicious withdrawals and protect your funds on Monad.
-          </p>
-          <p className="fade-in landing-desc-small" style={{ animationDelay: '0.7s' }}>
-            On-chain risk detection with time-locked execution.
-          </p>
-
-          {/* CTA */}
-          <button
-            className="fade-in landing-launch-btn"
-            style={{ animationDelay: '0.85s' }}
-            onClick={onLaunch}
-          >
-            LAUNCH APP
-          </button>
+          {/* right — 3D cube scene */}
+          <div className="lp-fade lp-hero-right" style={{ animationDelay: '0.3s' }}>
+            <CubeScene />
+            <span className="lp-block-label">◆ BLOCK</span>
+          </div>
         </section>
 
         {/* FEATURES BAR */}
-        <div className="features-bar">
+        <div className="lp-features">
           {[
             { icon: '◇', label: 'Risk Detection' },
             { icon: '⏱', label: 'Time-Locked' },
             { icon: '↩', label: 'Cancellable' },
             { icon: '⊕', label: 'Emergency Lock' },
-          ].map((f) => (
-            <div key={f.label} className="feature-item">
-              <span className="feat-icon">{f.icon}</span>
-              <span className="feat-label">{f.label}</span>
+          ].map(f => (
+            <div key={f.label} className="lp-feat-item">
+              <span className="lp-feat-icon">{f.icon}</span>
+              <span className="lp-feat-label">{f.label}</span>
             </div>
           ))}
         </div>
 
         {/* MARQUEE */}
-        <div className="marquee-wrap">
-          <div className="marquee-track">
+        <div className="lp-marquee-wrap">
+          <div className="lp-marquee-track">
             {['PROTECT YOUR ASSETS', 'ON-CHAIN SECURITY', 'MONAD NATIVE', 'TIME-LOCKED EXECUTION', 'RISK DETECTION',
               'PROTECT YOUR ASSETS', 'ON-CHAIN SECURITY', 'MONAD NATIVE', 'TIME-LOCKED EXECUTION', 'RISK DETECTION'].map((t, i) => (
               <React.Fragment key={i}>
-                <span className="marquee-text">{t}</span>
-                <span className="marquee-text marquee-accent">◆</span>
+                <span className="lp-marquee-text">{t}</span>
+                <span className="lp-marquee-text lp-marquee-accent">◆</span>
               </React.Fragment>
             ))}
           </div>
         </div>
 
         {/* HOW IT WORKS */}
-        <section id="how-it-works" className="steps-section">
-          <p className="steps-label">// How it works</p>
-          <h2 className="steps-title">
-            PROTECT<br />
-            <span style={{ color: '#FF6B2B' }}>IN 5 STEPS</span>
+        <section id="how-it-works" className="lp-steps">
+          <p className="lp-steps-label">// How it works</p>
+          <h2 className="lp-steps-title">
+            <span style={{ color: '#697f42' }}>PROTECT</span><br />
+            <span style={{ color: '#ec632c' }}>IN 5 STEPS</span>
           </h2>
-          <div className="steps-grid">
+          <div className="lp-steps-grid">
             {[
-              { n: '01', title: 'DEPOSIT YOUR MONS', desc: 'Deposit your MON tokens into the LockFi vault. Your funds are secured on-chain from the moment they enter.' },
+              { n: '01', title: 'DEPOSIT YOUR MONS',        desc: 'Deposit your MON tokens into the LockFi vault. Your funds are secured on-chain from the moment they enter.' },
               { n: '02', title: 'REGISTER RECOVERY WALLET', desc: 'Set up a secondary wallet as your rescue address. This backup wallet adds an extra layer of protection for fund recovery.' },
-              { n: '03', title: 'INITIATE WITHDRAWAL', desc: "Submit your withdrawal request. LockFi's on-chain engine scans the transaction for risk signals in real time." },
-              { n: '04', title: 'TIME-LOCK PERIOD', desc: 'Suspicious transactions enter a configurable delay window. Cancel at any time if something looks wrong.' },
-              { n: '05', title: 'SECURE RELEASE', desc: 'Once the lock expires and all checks pass, funds are released securely to the destination address.' },
-            ].map((s) => (
-              <div key={s.n} className="step-card">
-                <div className="step-num">{s.n}</div>
-                <h3 className="step-card-title">{s.title}</h3>
-                <p className="step-card-desc">{s.desc}</p>
+              { n: '03', title: 'INITIATE WITHDRAWAL',      desc: "Submit your withdrawal request. LockFi's on-chain engine scans the transaction for risk signals in real time." },
+              { n: '04', title: 'TIME-LOCK PERIOD',         desc: 'Suspicious transactions enter a configurable delay window. Cancel at any time if something looks wrong.' },
+              { n: '05', title: 'SECURE RELEASE',           desc: 'Once the lock expires and all checks pass, funds are released securely to the destination address.' },
+            ].map(s => (
+              <div key={s.n} className="lp-step-card">
+                <div className="lp-step-num">{s.n}</div>
+                <h3 className="lp-step-card-title">{s.title}</h3>
+                <p className="lp-step-card-desc">{s.desc}</p>
               </div>
             ))}
           </div>
         </section>
 
         {/* FOOTER */}
-        <footer className="landing-footer">
-          <span className="footer-text">© 2026 LockFi Protocol</span>
-          <span className="footer-chain">◆ Built on Monad</span>
-          <span className="footer-text">Leticia Azevedo &amp; Shaiane Viana</span>
+        <footer className="lp-footer">
+          <span className="lp-footer-text">© 2026 LockFi Protocol</span>
+          <span className="lp-footer-text" style={{ color: '#ec632c' }}>◆ Built on Monad</span>
+          <span className="lp-footer-text">Leticia Azevedo &amp; Shaiane Viana</span>
         </footer>
       </div>
     </>

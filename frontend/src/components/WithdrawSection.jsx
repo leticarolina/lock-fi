@@ -59,7 +59,7 @@ export default function WithdrawSection({ disabled, emergencyLocked, postLockBlo
       style={{ opacity: disabled ? 0.5 : 1, pointerEvents: disabled ? 'none' : 'auto' }}
     >
       <div className="mb-5">
-        <p className="font-body text-[10px] tracking-[0.2em] uppercase mb-1" style={{ color: '#FF6B2B' }}>// Action</p>
+        <p className="font-body text-[10px] tracking-[0.2em] uppercase mb-1" style={{ color: '#ec632c' }}>// Action</p>
         <h3 className="font-display text-lg text-vault-text tracking-tight">Withdraw MON</h3>
       </div>
 
