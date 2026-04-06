@@ -1,168 +1,205 @@
-# 🔒 LockFi — Vault Protection Against Risky Withdrawals
+# 🔒 LockFi — Smart Vault Security Protocol
 
-**LockFi** is a security-oriented smart vault that introduces a strategic delay on high-risk withdrawals, preventing the instant loss of user funds.
+**LockFi** is a self-custody smart vault that protects your funds from instant drainage by introducing behavioral risk detection on withdrawals.
 
-Instead of allowing large amounts to exit a wallet immediately, LockFi creates a "reaction window." This gives the user time to detect unauthorized activity, cancel the withdrawal, or trigger an emergency lock before the funds are actually moved.
+Instead of letting funds exit immediately, LockFi evaluates every withdrawal attempt against a set of rules designed to detect real attack patterns. Suspicious withdrawals are delayed — not blocked — giving you a reaction window to cancel, lock your vault, or move funds to a pre-registered safe address.
 
-**⭐ The Vision**: Instant fund drainage should not be the industry standard. Users deserve a fair window of time to react to threats.
+> **The Vision:** Instant fund drainage should not be the industry standard. Users deserve a fair window of time to react to threats.
 
-Project developed for the **Monad Hackathon** (1st Place Winner 🏆).
+🏆 **1st Place Winner — Monad Hackathon**
 
-**Smart Contract:** [`LockFi.sol`](https://testnet.monadscan.com/address/0x31b36930BdFe07f4366379De4CFeAEF528Ce8e70)
-**Live Demo:** [LockFi DApp](https://lockfi.vercel.app/)
+- **Smart Contract:** [`LockFi.sol`](https://testnet.monadscan.com/address/0x0919Df3678039BCe59abdD19D7bf9e7D1b7eb5d8)
+- **Live Demo:** [lock-fi.vercel.app](https://lock-fi.vercel.app/)
+- **Security Design:** [`SECURITY.md`](./SECURITY.md)
 
 ---
 
 ## The Problem
 
-Currently, in the crypto ecosystem:
+In crypto today:
 
-- **Compromised Wallet** → Funds are drained in seconds.
-- **Fat-finger Errors** → No way to revert a transaction once sent.
-- **Total Drainage** → Attackers can empty a vault instantly.
+- **Compromised wallet** → funds drained in seconds, no recourse.
+- **Fat-finger error** → transaction sent, nothing you can do.
+- **Slow drain attack** → attacker extracts gradually, staying under the radar.
+- **Safe address hijack** → attacker reroutes your recovery address before you notice.
 
-**The Reality:**
+Everything happens at blockchain speed. One mistake or one compromised key, and it's over.
 
-- Zero reaction time.
-- No intermediate protection layer.
-- Everything happens at the speed of the blockchain, making any mistake or exploit fatal.
+---
 
-## The Solution — LockFi
+## The Solution
 
-LockFi acts as an **Intelligent Security Layer** for your assets.
+LockFi sits between your funds and the outside world. Every withdrawal is evaluated before it executes.
 
-When you deposit funds into the vault and attempt a withdrawal, the system categorizes the risk:
+**🟢 Small, normal amount** — executes instantly.  
+**🟠 Large or suspicious amount** — enters pending queue with a 12h delay.  
+**🟠 Any withdrawal after a small probe** — flagged by pattern detection, 12h delay.  
+**🟠 Cumulative drain over 72h** — flagged by time-window tracking, 12h delay.
 
-- 🟢 **Small Withdrawals** → Executed instantly.
-- 🟠 **Large Withdrawals** → Placed in a "Pending" queue.
-- 🔴 **Suspicious Patterns** → Automatically flagged for a mandatory delay.
+If something looks wrong, you have time to act:
 
-This delay creates a **Reaction Window**. If a transaction wasn't initiated by you (or was a mistake), you can:
-
-1. **Cancel** the withdrawal immediately.
-2. **Lock** the entire vault.
-3. **Save** withdraw your assets to a safe pre-defined address before they leave the contract.
-
-## How it Works in Practice
-
-### 1. Deposit
-
-The user sends ETH to the vault. The value is safely stored within the smart contract logic.
-
-### 2. Request Withdrawal
-
-When a user requests a withdrawal, the contract evaluates the risk profile:
-
-**Secure Withdrawal:** If the amount is small relative to the total balance, it executes immediately.
-**Risky Withdrawal:** If the amount meets one of the risky behaviors, the withdrawal enters a **Pending State**.
-
-### 3. Execute or Cancel
-
-If the withdrawal was legitimate, the user simply waits for the timer to expire and calls the execution function. If the activity is suspicious, the user can trigger an **Immediate Cancel**, returning the funds to the secure vault state.
-
-### 4. Emergency Lockdown
-
-In case of a known or suspicious of compromise, the user can trigger an **Emergency Lock**. This freezes all outgoing activity for 24 hours, providing a vital buffer to move recovery keys or secure other assets.
+1. **Cancel** the pending withdrawal — funds return to your vault immediately.
+2. **Lock the vault** — freeze all outgoing activity for up to 30 days.
+3. **Withdraw to safe address** — route everything to a pre-registered trusted address.
 
 ---
 
 ## Risk Detection Rules
 
-A withdrawal is flagged and delayed if it triggers any of the following conditions.
+### Rule 1 — Large Withdrawal
 
-These rules are designed to detect common attack behaviors while preserving normal user experience.
-
----
-
-### Rule 1: Threshold Breach (Large Withdrawal)
-
-Triggered if the withdrawal amount is greater than **60% of the user's total balance**.
-
-**Example**
-
-Balance: `10 ETH`  
-Withdrawal: `7 ETH` → **Flagged**
-
-This rule protects against **instant full-balance drain attempts**, which are common after wallet compromise.
-
----
-
-### Rule 2: Anomaly Detection (Suspicious Pattern)
-
-Triggered if a small "test" withdrawal is immediately followed by a large withdrawal.
-
-**Example**
-
-Withdrawal 1: `0.1 ETH`  
-Withdrawal 2: `5 ETH` → **Flagged**
-
-This rule protects against **staged attack behavior**, where attackers first test wallet permissions before attempting a larger withdrawal.
-
----
-
-### Rule 3: Cumulative Withdrawal Limit (Time-Based Protection)
-
-Triggered if the user's **total withdrawals within a rolling time window** exceed a defined percentage of their balance.
-
-**Current Configuration**
-
-- Maximum allowed: **30% of balance**
-- Time window: **72 hours**
-
-If cumulative withdrawals exceed this threshold, the **next withdrawal is automatically flagged and delayed**, regardless of size.
-
-**Example**
-
-Withdrawal 1 → `10%`  
-Withdrawal 2 → `10%`  
-Withdrawal 3 → `10%`  
-Withdrawal 4 → `Any amount` → **Flagged**
-
-This rule protects against **slow-drain attacks**, where attackers attempt to bypass large-withdrawal protections by extracting funds gradually over time.
-
----
-
-## Why These Rules Matter
-
-Together, these mechanisms create **layered behavioral protection** against multiple real-world attack patterns:
-
-- **Rule 1** → Blocks large instant drains  
-- **Rule 2** → Detects staged attack behavior  
-- **Rule 3** → Prevents slow cumulative draining  
-
-Instead of blocking withdrawals outright, LockFi introduces **controlled delays**, giving users time to react, cancel suspicious actions, or move funds to a safe address.
-
----
-
-### Key Features
-
-- **ETH Storage Vault:** Secure on-chain accounting.
-- **Dynamic Delays:** Speed for small amounts, safety for large ones.
-- **Active Defense:** Cancel pending transactions or lock the vault entirely.
-- **One Pending Action:** Prevents spamming withdrawal requests to bypass security.
-
-## Technical Overview
-
-### Smart Contract Functions
+**Trigger:** Withdrawal exceeds 60% of your vault balance.
 
 ```solidity
-deposit()           // Securely store ETH
-withdraw(amount)    // Initiate withdrawal (Instant or Delayed)
-executeWithdraw()   // Complete a pending withdrawal after the delay
-cancelWithdraw()    // Revert a suspicious pending withdrawal
-emergencyLock()     // 24-hour freeze on all vault activity
+Balance: 10 ETH
+Withdrawal: 7 ETH (70%) → Flagged, 12h delay
 ```
+
+Defends against instant full-balance drain after wallet compromise.
+
+---
+
+### Rule 2 — Test-Probe Pattern
+
+**Trigger:** Your previous withdrawal was less than 5% of balance.
+
+```solidity
+Withdrawal 1: 0.04 ETH (4%) → Executes instantly
+Withdrawal 2: Any amount   → Flagged, 12h delay
+```
+
+Defends against staged attacks where an attacker first sends a small "test" transaction to verify wallet access before attempting a larger drain.
+
+---
+
+### Rule 3 — Cumulative Time Window
+
+**Trigger:** Total withdrawals within the last 72 hours exceed 30% of your balance.
+
+```solidity
+Balance: 10 ETH
+Withdrawal 1: 10% → OK
+Withdrawal 2: 10% → OK
+Withdrawal 3: 11% → Flagged (cumulative > 30%)
+```
+
+Defends against slow-drain attacks where an attacker extracts gradually to avoid triggering Rule 1.
+
+---
+
+## Key Features
+
+### Withdrawal Lifecycle
+
+- Every withdrawal is either instant or enters a **12-hour pending queue**.
+- Only **one pending withdrawal** per user — prevents spamming to exhaust the delay mechanism.
+- Pending withdrawals can be **cancelled at any time**, returning funds to the vault instantly.
+
+### Emergency Lock
+
+- Freeze all vault activity for a **user-defined duration** (1 hour to 30 days).
+- Lock can only be **extended, never shortened** — an attacker cannot reduce your lock to regain access sooner.
+- Blocks all withdrawals, pending executions, and safe address changes while active.
+
+### Safe Address Recovery
+
+- Register a **trusted recovery address** as a permanent exit path.
+- Changing the safe address requires a **24-hour delay** — prevents attackers from rerouting it before you can react.
+- Safe address changes are **blocked during emergency lock**.
+- `withdrawToSafe` sends your entire balance to the safe address in one transaction.
+
+---
+
+## How It Works
+
+**Normal withdrawal flow:**
+
+1. User deposits ETH into the vault
+2. User requests a withdrawal
+3. LockFi evaluates the risk — instant if safe, 12h pending queue if suspicious
+4. If pending: user waits and executes, or cancels immediately if it wasn't them
+
+**If the vault is ever at risk:**
+
+1. Detect suspicious activity
+2. Trigger emergency lock (1 hour to 30 days — nothing moves)
+3. Cancel any pending withdrawal if one was queued by the attacker
+4. Wait for the lock to expire
+5. Withdraw everything to your pre-registered safe address
+
+---
+
+## Smart Contract Functions
+
+```solidity
+// Core vault
+deposit()                              // Deposit native token
+withdraw(uint256 amount)               // Initiate withdrawal — instant or delayed
+executeWithdraw()                      // Execute after delay expires
+cancelWithdraw()                       // Cancel pending withdrawal
+
+// Emergency
+emergencyLock(uint256 duration)        // Lock vault (1h to 30 days)
+
+// Safe address
+setSafeAddress(address _safe)          // Register recovery address (first time)
+requestSafeAddressChange(address)      // Request change (24h delay)
+confirmSafeAddressChange()             // Confirm after delay
+cancelSafeAddressChange()              // Cancel pending change
+withdrawToSafe()                       // Send full balance to safe address
+
+// View helpers
+getUserState(address)                  // Full vault state in one call
+getInstantWithdrawLimit(address)       // Max amount that executes instantly
+getRemainingPendingTime(address)       // Time left on pending withdrawal
+getRemainingLockTime(address)          // Time left on emergency lock
+```
+
+---
 
 ## Security Architecture
 
-- Strict Internal Accounting: Prevents reentrancy and balance manipulation.
-- State Independence: Each user’s security state (timers/locks) is isolated.
-- Mandatory Timelocks: Immutable logic ensures delays cannot be bypassed if triggered.
-- Safe-Address Whitelisting: Pre-define recovery addresses.
+- **ReentrancyGuard** on all functions that transfer ETH.
+- **Checks-Effects-Interactions** pattern throughout — balance deducted before ETH sent.
+- **Per-user state isolation** — no shared pools, no cross-user risk.
+- **Extension-only lock** — `lockedUntil` can only move forward in time.
+- **Behavioral detection** — risk rules operate on pattern history, not just single transaction amounts.
+
+For full design rationale, threat model, and audit guidance see [`SECURITY.md`](./SECURITY.md).
+
+---
+
+## Testing
+
+Test coverage includes unit tests across all functions and edge cases, plus invariant tests verifying solvency, balance integrity, and state consistency under arbitrary call sequences.
+
+---
+
+## Known Limitations
+
+- Native token only (ETH / MON). ERC-20 support is planned.
+- Rule thresholds are hardcoded constants. Configurable thresholds are a future consideration.
+- `lastWithdrawPercent` (Rule 2 probe detection) persists indefinitely. A user who once made a small withdrawal will have their next withdrawal delayed regardless of elapsed time. The cancel mechanism mitigates this.
+
+### NFT Support *(coming V3)*
+
+- Deposit and secure ERC-721 NFTs inside the vault.
+- All NFT withdrawals subject to a flat 12-hour delay — no exceptions.
+- High-value NFTs deserve the same reaction window as funds.
+
+---
+
+## Stack
+
+- **Smart Contract:** Solidity 0.8.20, Foundry, OpenZeppelin
+- **Frontend:** React, wagmi, RainbowKit, Next.js
+- **Network:** Monad Testnet
+
+---
 
 ## Authorship
 
-Leticia Azevedo — Smart Contract Architecture & Lead Dev
-Shaiane Viana — UI/UX Design
+**Leticia Azevedo** — Smart Contract Architecture & Lead Dev  
+**Shaiane Viana** — UI/UX Design
 
 Built with 💜 for the Monad ecosystem.

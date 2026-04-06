@@ -2,8 +2,8 @@
 
 **Author:** Leticia Azevedo  
 **Contract:** `LockFi.sol`  
-**Version:** Post-hackathon MVP  
-**Last Updated:** March 2026
+**Version:** MVP
+**Last Updated:** April 2026
 
 ---
 
@@ -29,7 +29,7 @@ A user accidentally initiates a large withdrawal to the wrong address. The delay
 
 ### 3. Staged Attack (Test-Probe Pattern)
 
-A common attacker behavior: first send a small "test" transaction to verify wallet permissions and contract interaction, then follow with a large drain. LockFi's Rule 2 specifically detects this sequential pattern.
+A common attacker behavior: first send a small "test" transaction to verify wallet permissions and contract interaction, then follow with a larger drain. LockFi's Rule 2 detects this sequential pattern that any withdrawal following a small probe is flagged regardless of its size.
 
 ### 4. Slow Drain Attack
 
@@ -37,7 +37,15 @@ An attacker with partial access attempts to bypass large-withdrawal protections 
 
 ### 5. Safe Address Hijacking
 
-An attacker with a compromised key attempts to change the user's safe address to their own, then use `withdrawToSafe` to drain funds. The 24-hour delay on safe address changes prevents this — the legitimate user has time to detect and cancel the pending change.
+An attacker with a compromised key attempts to change the user's safe address to their own, then use `withdrawToSafe` to drain funds. The 24-hour delay on safe address changes prevents this, so the legitimate user has time to detect and cancel the pending change before it takes effect.
+
+### 6. Lock Bypass via Safe Address Change
+
+An attacker who cannot immediately drain funds attempts to queue a safe address change during an active emergency lock, wait for the change delay to expire, confirm the reroute, then drain via `withdrawToSafe` the moment the lock expires. Both `requestSafeAddressChange` and `confirmSafeAddressChange` are blocked during emergency lock, closing this attack path entirely.
+
+### 7. Lock Duration Reduction
+
+An attacker with a compromised key finds the vault under emergency lock and attempts to reduce the lock duration by calling `emergencyLock` with a shorter value, gaining access sooner. The contract enforces extension-only behavior, `lockedUntil` can only move forward in time, never backward.
 
 ---
 
@@ -51,11 +59,14 @@ An attacker with a compromised key attempts to change the user's safe address to
 
 ### Rule 2 — Suspicious Sequential Pattern
 
-**Trigger:** The previous withdrawal was less than 5% of balance AND the current withdrawal exceeds 40% of balance.  
-**Defends against:** Test-probe attack behavior where an attacker first verifies access with a small transaction before executing a large drain.  
-**Rationale:** The combination of a small prior withdrawal followed immediately by a large one is a strong behavioral signal of staged attack activity. Normal users do not typically follow this pattern.
+**Trigger:** The previous withdrawal was less than 5% of balance at the time it was made.  
+**Defends against:** Test-probe attack behavior where an attacker first verifies wallet access with a small transaction before executing a larger drain.  
+**Rationale:** A small probe withdrawal is a strong behavioral signal of staged attack intent. Any withdrawal following a probe, regardless of size, is treated as suspicious. The original design included a secondary threshold (next withdrawal > 40%) but this was removed because it made Rule 2 nearly redundant with Rule 3.
 
-**Important design note:** `lastWithdrawPercent` is intentionally NOT reset when a withdrawal is cancelled. If it were reset, an attacker could erase their own suspicious pattern history by cancelling a flagged withdrawal and repeating the test-probe sequence. The percent is recorded at the moment of withdrawal request, not execution.
+**Important design notes:**
+
+- `lastWithdrawPercent` is intentionally **not reset when a withdrawal is cancelled**. If it were reset, an attacker could erase their suspicious pattern history by cancelling a flagged withdrawal and repeating the test-probe sequence. The percent is recorded at the moment of the withdrawal request, not at execution.
+- `lastWithdrawPercent` is also intentionally **not reset when the 72-hour window expires**. The probe pattern is a behavioral signal that persists regardless of time. A patient attacker who probes and then waits for a window reset should still be flagged.
 
 ### Rule 3 — Cumulative 72-Hour Window
 
@@ -63,7 +74,7 @@ An attacker with a compromised key attempts to change the user's safe address to
 **Defends against:** Slow drain attacks where an attacker extracts funds gradually to avoid triggering Rule 1.  
 **Rationale:** A rolling time window catches accumulated suspicious behavior that no single transaction would flag individually.
 
-**Window behavior:** The window initializes on first withdrawal and resets after 72 hours. Cumulative percentage is tracked per user in isolation.
+**Window behavior:** The window initializes on first withdrawal and resets after 72 hours. Cumulative percentage is tracked per user in isolation. Deposits during an active window do not reset accumulation, the percent of each withdrawal is calculated against the balance at the time of that specific withdrawal.
 
 ---
 
@@ -73,9 +84,21 @@ An attacker with a compromised key attempts to change the user's safe address to
 
 Rather than a hardcoded lock duration, `emergencyLock` accepts a `duration` parameter bounded between `MIN_LOCK_DURATION` (1 hour) and `MAX_LOCK_DURATION` (30 days).
 
-**Rationale:** A fixed duration cannot serve both use cases above. An active threat response may only need hours. A user going offline for a month needs days or weeks. Forcing a single value either makes the lock too short to be useful for passive protection or too long to be practical for active response. The contract enforces the safety constraints without making the duration decision for the user.
+**Rationale:** Emergency lock serves two distinct use cases that a fixed duration cannot satisfy simultaneously:
 
-**Bounds rationale:** The 1-hour minimum prevents trivially short locks that provide no meaningful protection. The 30-day maximum prevents accidental semi-permanent lockout where a user forgets they locked the vault.
+**Active threat response:** User detects a compromise and needs to freeze the vault immediately. A short lock (hours) may be sufficient while they assess and respond.
+
+**Passive protection:** User is going offline for an extended period and wants a hard guarantee that nothing moves. A longer lock (days or weeks) serves this need.
+
+The contract enforces safety bounds without making the duration decision for the user.
+
+**Bounds rationale:** The 1-hour minimum prevents trivially short locks that offer no meaningful protection. The 30-day maximum prevents accidental semi-permanent lockout.
+
+### emergencyLock can only extend, never shorten
+
+Once `lockedUntil` is set, subsequent calls to `emergencyLock` can only push the unlock time further into the future. Any call where `block.timestamp + duration < lockedUntil` reverts with `LockNotExtended`.
+
+**Rationale:** Without this check, an attacker with a compromised key could find a locked vault and immediately reduce the lock duration to regain access sooner. Extension-only behavior ensures the lock is an absolute guarantee — once set, it cannot be weakened.
 
 ### Two separate functions for safe address setup vs. change
 
@@ -83,17 +106,21 @@ Rather than a hardcoded lock duration, `emergencyLock` accepts a `duration` para
 
 **Rationale:** First-time setup requires no delay — there is no existing safe address to protect and no attack vector to defend against. However, changing an existing safe address is a high-risk operation: an attacker with a compromised key would immediately attempt to reroute the safe address to their own wallet before calling `withdrawToSafe`. The mandatory 24-hour delay on changes makes this attack ineffective. Merging these into one function would add conditional complexity without improving security.
 
+### Safe address changes are blocked during emergency lock
+
+Both `requestSafeAddressChange` and `confirmSafeAddressChange` revert with `EmergencyLockOngoing` when the vault is locked.
+
+**Rationale:** Without this block, an attacker could queue a safe address change during an active lock, wait for the 24-hour change delay, confirm the reroute, then call `withdrawToSafe` immediately after the lock expires — effectively bypassing the lock's protection. Blocking both request and confirm during lock closes this attack window entirely.
+
+**Effect on legitimate users:** A user who queued a safe address change before activating a lock can still cancel the pending change at any time. They can confirm it after the lock expires. `cancelSafeAddressChange` is intentionally not blocked during lock — cancelling is always a safe action.
+
 ### withdrawToSafe respects emergencyLock
 
 `withdrawToSafe` is not allowed to execute when the vault is under emergency lock. This is intentional.
 
-**Rationale:** Emergency lock serves two distinct use cases:
+**Rationale:** Emergency lock must be an absolute freeze on all outgoing activity. Allowing `withdrawToSafe` to bypass the lock would undermine the passive protection use case — a user who locks for 30 days expects nothing to move, but an attacker with the key could still drain via `withdrawToSafe` if the safe address had already been changed undetected.
 
-**Active threat response:** User detects a compromise and locks immediately. The recovery path is still protected upstream, any attempt to reroute the safe address requires a 24-hour delay, giving the user time to cancel a malicious safe address change before it executes. The user waits for the lock to expire then calls `withdrawToSafe`.
-
-**Passive protection:** User is going offline for an extended period and wants a hard guarantee that nothing moves. Emergency lock with a user-defined duration (up to 30 days) provides this.
-
-In both cases the guarantee of this invariant must be absolute — nothing leaves the vault while locked. The tradeoff is a potential wait during an active attack, but this is preferable to the alternative: a user who activates emergency lock believing funds are fully frozen while an attacker can still drain via `withdrawToSafe` if the safe address was already changed undetected.
+For the active threat use case, the user can wait for the lock to expire then call `withdrawToSafe`. The safe address itself is protected by a 24-hour change delay and is blocked during lock, making it a trusted destination by the time the lock expires.
 
 ### One pending withdrawal per user
 
@@ -143,6 +170,7 @@ Maximum cumulative withdrawals allowed within the 72-hour window before triggeri
 - **Rule thresholds are fixed:** Delay thresholds and risk percentages are hardcoded constants. Future versions could explore user-configurable thresholds within safe bounds.
 - **No oracle integration:** Risk detection is purely behavioral and on-chain. It does not account for external price volatility or cross-protocol context.
 - **Single safe address:** Each user can register one safe address. Multi-address recovery is a potential future feature.
+- **`lastWithdrawPercent` persists indefinitely:** The probe detection history never resets. A legitimate user who once made a small withdrawal will have their next withdrawal flagged regardless of how much time has passed. The cancel mechanism mitigates this, the delayed withdrawal can be cancelled and re-requested, but it is a known UX friction point.
 
 ---
 
