@@ -36,7 +36,7 @@ function CubeScene() {
   return (
     <svg
       viewBox="0 0 760 560"
-      style={{ width: '100%', height: '100%', overflow: 'visible' }}
+      style={{ width: '100%', height: '100%', overflow: 'hidden' }}
       xmlns="http://www.w3.org/2000/svg"
     >
       <defs>
@@ -329,8 +329,8 @@ export default function LandingScreen({ onLaunch }) {
           display: flex;
           align-items: center;
           justify-content: flex-start;
-          margin-left: clamp(-320px, -34vw, -160px);
           height: clamp(340px, 50vw, 500px);
+          overflow: hidden;
         }
 
         .lp-block-label {
