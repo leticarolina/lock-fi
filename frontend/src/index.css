@@ -119,9 +119,9 @@ input[type="range"].lock-slider::-moz-range-track {
 
 .grid-bg {
   background-image:
-    linear-gradient(var(--clr-grid) 1px, transparent 1px),
-    linear-gradient(90deg, var(--clr-grid) 1px, transparent 1px);
-  background-size: 60px 60px;
+    linear-gradient(45deg, rgba(160,120,80,0.10) 1px, transparent 1px),
+    linear-gradient(-45deg, rgba(160,120,80,0.10) 1px, transparent 1px);
+  background-size: 48px 48px;
 }
 
 .gradient-blob {
@@ -205,7 +205,7 @@ input[type="range"].lock-slider::-moz-range-track {
   }
 
   .input-field {
-    @apply w-full border rounded-lg
+    @apply w-full border rounded
            px-4 py-3 font-body text-sm
            placeholder:text-vault-muted
            transition-all duration-200;

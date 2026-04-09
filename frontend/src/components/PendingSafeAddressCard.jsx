@@ -41,8 +41,8 @@ export default function PendingSafeAddressCard() {
   }
 
   return (
-    <div className="relative rounded-2xl overflow-hidden">
-      <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-vault-warning/20 via-transparent to-transparent pointer-events-none" />
+    <div className="relative rounded overflow-hidden">
+      <div className="absolute inset-0 rounded bg-gradient-to-b from-vault-warning/20 via-transparent to-transparent pointer-events-none" />
 
       <div className="card border-vault-warning/25 relative">
         {/* Header */}
@@ -56,11 +56,11 @@ export default function PendingSafeAddressCard() {
           </div>
 
           {isComplete ? (
-            <span className="px-3 py-1 bg-vault-accent/10 border border-vault-accent/30 rounded-full text-vault-accent text-[10px] font-body tracking-wider uppercase">
+            <span className="px-3 py-1 bg-vault-accent/10 border border-vault-accent/30 rounded text-vault-accent text-[10px] font-body tracking-wider uppercase">
               Ready
             </span>
           ) : (
-            <span className="px-3 py-1 bg-vault-warning/10 border border-vault-warning/30 rounded-full text-vault-warning text-[10px] font-body tracking-wider uppercase animate-pulse">
+            <span className="px-3 py-1 bg-vault-warning/10 border border-vault-warning/30 rounded text-vault-warning text-[10px] font-body tracking-wider uppercase animate-pulse">
               Locked
             </span>
           )}
@@ -83,7 +83,7 @@ export default function PendingSafeAddressCard() {
         </div>
 
         {/* Pending address */}
-        <div className="mb-5 p-3 bg-vault-surface border border-vault-border/50 rounded-xl">
+        <div className="mb-5 p-3 bg-vault-surface border border-vault-border/50 rounded">
           <p className="text-vault-muted text-[10px] font-body tracking-[0.12em] uppercase mb-1">New Address</p>
           <p className="font-body text-xs text-vault-text-dim break-all">{pendingSafeAddress.address}</p>
         </div>

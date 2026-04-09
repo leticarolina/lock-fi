@@ -109,7 +109,7 @@ function DurationSelector({ value, onChange }) {
                 letterSpacing: '0.06em',
                 background: active ? 'rgba(236,99,44,0.15)' : 'transparent',
                 border: active ? '1px solid rgba(236,99,44,0.55)' : '1px solid var(--clr-border-soft)',
-                borderRadius: 6,
+                borderRadius: 4,
                 color: active ? '#ec632c' : 'var(--clr-muted)',
                 cursor: 'pointer',
                 transition: 'all 0.15s',
@@ -174,14 +174,14 @@ export default function EmergencyLockCard() {
       <div style={{
         backgroundColor: 'var(--clr-surface)',
         border: '1px solid var(--clr-border-soft)',
-        borderRadius: 16,
+        borderRadius: 4,
         padding: 24,
         transition: 'background-color 0.25s ease',
       }}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 4, backgroundColor: 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <svg style={{ width: 20, height: 20, color: '#ef4444' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                 <path d="M7 11V7a5 5 0 0 1 10 0v4" />
@@ -200,7 +200,7 @@ export default function EmergencyLockCard() {
             padding: '4px 12px',
             backgroundColor: 'rgba(239,68,68,0.1)',
             border: '1px solid rgba(239,68,68,0.3)',
-            borderRadius: 20,
+            borderRadius: 4,
             fontFamily: 'Space Mono',
             fontSize: 10,
             color: '#ef4444',
@@ -219,7 +219,7 @@ export default function EmergencyLockCard() {
           alignItems: 'center',
           padding: '16px 0',
           marginBottom: 16,
-          borderRadius: 12,
+          borderRadius: 4,
           border: '1px solid var(--clr-border-soft)',
           backgroundColor: 'var(--clr-deep)',
         }}>
@@ -239,7 +239,7 @@ export default function EmergencyLockCard() {
           padding: '10px 12px',
           backgroundColor: 'rgba(239,68,68,0.05)',
           border: '1px solid rgba(239,68,68,0.12)',
-          borderRadius: 10,
+          borderRadius: 4,
           marginBottom: 14,
         }}>
           <svg style={{ width: 13, height: 13, color: '#ef4444', marginTop: 1, flexShrink: 0 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -261,7 +261,7 @@ export default function EmergencyLockCard() {
               padding: '10px 0',
               background: 'transparent',
               border: '1px solid var(--clr-border-soft)',
-              borderRadius: 8,
+              borderRadius: 4,
               fontFamily: 'Space Mono',
               fontSize: 10,
               color: 'var(--clr-muted)',
@@ -276,7 +276,7 @@ export default function EmergencyLockCard() {
             Extend Lock
           </button>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '16px', border: '1px solid var(--clr-border-soft)', borderRadius: 10, backgroundColor: 'var(--clr-deep)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '16px', border: '1px solid var(--clr-border-soft)', borderRadius: 4, backgroundColor: 'var(--clr-deep)' }}>
             <p style={{ fontFamily: 'Archivo Black', fontSize: 12, color: 'var(--clr-text-dim)', margin: 0, letterSpacing: '0.04em' }}>
               Extend Lock Duration
             </p>
@@ -292,7 +292,7 @@ export default function EmergencyLockCard() {
                   padding: '9px 0',
                   background: 'transparent',
                   border: '1px solid var(--clr-border)',
-                  borderRadius: 7,
+                  borderRadius: 4,
                   fontFamily: 'Space Mono',
                   fontSize: 10,
                   color: 'var(--clr-muted)',
@@ -309,7 +309,7 @@ export default function EmergencyLockCard() {
                   padding: '9px 0',
                   background: isExtending ? 'transparent' : 'rgba(239,68,68,0.12)',
                   border: '1px solid rgba(239,68,68,0.35)',
-                  borderRadius: 7,
+                  borderRadius: 4,
                   fontFamily: 'Space Mono',
                   fontSize: 10,
                   color: '#ef4444',
@@ -359,7 +359,7 @@ export default function EmergencyLockCard() {
           padding: '12px 14px',
           backgroundColor: 'rgba(239,68,68,0.06)',
           border: '1px solid rgba(239,68,68,0.18)',
-          borderRadius: 10,
+          borderRadius: 4,
           display: 'flex',
           gap: 10,
           alignItems: 'flex-start',

@@ -44,9 +44,9 @@ export default function PendingCard() {
   }
 
   return (
-    <div className="relative rounded-2xl overflow-hidden">
+    <div className="relative rounded overflow-hidden">
       {/* Warning border glow */}
-      <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-vault-warning/20 via-transparent to-transparent pointer-events-none" />
+      <div className="absolute inset-0 rounded bg-gradient-to-b from-vault-warning/20 via-transparent to-transparent pointer-events-none" />
 
       <div className="card border-vault-warning/25 relative">
         {/* Header */}
@@ -61,11 +61,11 @@ export default function PendingCard() {
 
           {/* Status badge */}
           {isComplete ? (
-            <span className="px-3 py-1 bg-vault-accent/10 border border-vault-accent/30 rounded-full text-vault-accent text-[10px] font-body tracking-wider uppercase">
+            <span className="px-3 py-1 bg-vault-accent/10 border border-vault-accent/30 rounded text-vault-accent text-[10px] font-body tracking-wider uppercase">
               Ready
             </span>
           ) : (
-            <span className="px-3 py-1 bg-vault-warning/10 border border-vault-warning/30 rounded-full text-vault-warning text-[10px] font-body tracking-wider uppercase animate-pulse">
+            <span className="px-3 py-1 bg-vault-warning/10 border border-vault-warning/30 rounded text-vault-warning text-[10px] font-body tracking-wider uppercase animate-pulse">
               Locked
             </span>
           )}
