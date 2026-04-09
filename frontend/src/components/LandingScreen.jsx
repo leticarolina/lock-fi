@@ -75,10 +75,10 @@ function CubeScene() {
       <ellipse cx="380" cy="345" rx="48" ry="14" fill="rgba(120,220,50,0.18)" style={{ filter: 'blur(10px)' }} />
 
       {/* — diamond shadows (orange cubes) — */}
-      <CubeShadow cx={490} cy={110} s={70} />
-      <CubeShadow cx={570} cy={175} s={48} />
+      <CubeShadow cx={425} cy={75} s={70} />
+      <CubeShadow cx={530} cy={165} s={48} />
       <CubeShadow cx={540} cy={265} s={42} />
-      <CubeShadow cx={470} cy={345} s={58} />
+      <CubeShadow cx={455} cy={310} s={58} />
 
       {/* — diamond shadows (green cubes) — */}
       <CubeShadow cx={255} cy={130} s={48} />
@@ -86,13 +86,13 @@ function CubeScene() {
       <CubeShadow cx={290} cy={355} s={32} />
 
       {/* — large orange cube (upper-right, close to shield) — */}
-      <IsoCube cx={490} cy={110} s={70}
+      <IsoCube cx={425} cy={75} s={70}
         top="#F07048" right="#C04020" left="#D85530"
         style={{ filter: 'url(#shadow)', animation: 'floatA 4s ease-in-out infinite' }}
       />
 
       {/* — medium orange cube (right, close to shield) — */}
-      <IsoCube cx={570} cy={175} s={48}
+      <IsoCube cx={530} cy={165} s={48}
         top="#EC632C" right="#B84020" left="#D25028"
         style={{ filter: 'url(#shadow)', animation: 'floatB 5s ease-in-out infinite' }}
       />
@@ -104,7 +104,7 @@ function CubeScene() {
       />
 
       {/* — bottom-right orange cube — */}
-      <IsoCube cx={470} cy={345} s={58}
+      <IsoCube cx={455} cy={310} s={58}
         top="#EC632C" right="#B03818" left="#CC4E22"
         style={{ filter: 'url(#shadow)', animation: 'floatA 5.5s ease-in-out infinite' }}
       />
