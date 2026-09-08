@@ -119,11 +119,7 @@ contract LockFiTest is Test {
         vm.prank(leti);
 
         vm.expectRevert(
-            abi.encodeWithSelector(
-                LockFi.InsufficientBalance.selector,
-                1 ether,
-                2 ether
-            )
+            abi.encodeWithSelector(LockFi.InsufficientBalance.selector, 1 ether)
         );
         vault.withdraw(2 ether);
     }
