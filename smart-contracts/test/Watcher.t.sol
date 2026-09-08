@@ -46,11 +46,7 @@ contract WatcherTest is Test {
     }
 
     /// @dev Signs the executeWithdraw digest (user, amount, block.chainid) with the given private key.
-    function _signLedger(
-        uint256 privateKey,
-        address user,
-        uint256 amount
-    ) internal view returns (bytes memory) {
+    function _signLedger(uint256 privateKey, address user, uint256 amount) internal view returns (bytes memory) {
         bytes32 hash = keccak256(abi.encodePacked(user, amount, block.chainid));
         bytes32 digest = MessageHashUtils.toEthSignedMessageHash(hash);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, digest);
@@ -103,10 +99,7 @@ contract WatcherTest is Test {
         assertEq(leti.balance, beforeBalance + secondWithdraw + firstWithdraw);
     }
 
-    function test_withdraw_largeAmountPending()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_withdraw_largeAmountPending() public deposited(leti, 1 ether) {
         uint256 withdrawAmount = 0.8 ether; // 80%
         uint256 currentBalance = vault.balances(leti);
 
@@ -117,8 +110,7 @@ contract WatcherTest is Test {
 
         bool hasPending = vault.hasPendingWithdraw(leti);
         assertTrue(hasPending);
-        (uint256 amount, uint256 unlockTime, uint256 requestTime) = vault
-            .getPendingWithdraw(leti);
+        (uint256 amount, uint256 unlockTime, uint256 requestTime) = vault.getPendingWithdraw(leti);
         assertTrue(hasPending);
         assertEq(amount, withdrawAmount);
         assertGt(unlockTime, requestTime);
@@ -132,25 +124,14 @@ contract WatcherTest is Test {
         vault.withdraw(0);
     }
 
-    function test_withdraw_insufficientBalanceReverts()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_withdraw_insufficientBalanceReverts() public deposited(leti, 1 ether) {
         vm.prank(leti);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                Watcher.InsufficientBalance.selector,
-                1 ether
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(Watcher.InsufficientBalance.selector, 1 ether));
         vault.withdraw(2 ether);
     }
 
-    function test_withdraw_whenPendingExistsReverts()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_withdraw_whenPendingExistsReverts() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
         vault.withdraw(0.8 ether);
@@ -168,10 +149,7 @@ contract WatcherTest is Test {
     ============================================================
     */
 
-    function test_cancelWithdraw_restoresBalance()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_cancelWithdraw_restoresBalance() public deposited(leti, 1 ether) {
         uint256 withdrawAmount = 0.8 ether;
 
         vm.startPrank(leti);
@@ -189,10 +167,7 @@ contract WatcherTest is Test {
         assertFalse(hasPending);
     }
 
-    function test_cancelWithdraw_withoutPendingReverts()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_cancelWithdraw_withoutPendingReverts() public deposited(leti, 1 ether) {
         vm.prank(leti);
 
         vm.expectRevert(Watcher.NoPendingWithdraw.selector);
@@ -243,10 +218,7 @@ contract WatcherTest is Test {
         assertEq(leti.balance, beforeBalance + withdrawAmount);
     }
 
-    function test_executeWithdraw_reverts_beforeDelay()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_executeWithdraw_reverts_beforeDelay() public deposited(leti, 1 ether) {
         uint256 withdrawAmount = 0.8 ether;
 
         vm.startPrank(leti);
@@ -260,10 +232,7 @@ contract WatcherTest is Test {
         vm.stopPrank();
     }
 
-    function test_executeWithdraw_withoutPendingReverts()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_executeWithdraw_withoutPendingReverts() public deposited(leti, 1 ether) {
         vm.prank(leti);
 
         vm.expectRevert(Watcher.NoPendingWithdraw.selector);
@@ -293,10 +262,7 @@ contract WatcherTest is Test {
 
     // Execute pending withdrawal, then immediately try to withdraw again
     // withdrawnInWindow should now include the executed amount
-    function test_executeWithdraw_thenWithdrawAgain_windowAccumulates()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_executeWithdraw_thenWithdrawAgain_windowAccumulates() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
         vault.withdraw(0.8 ether);
@@ -321,10 +287,7 @@ contract WatcherTest is Test {
     ============================================================
     */
 
-    function test_emergencyLock_BlocksWithdraw()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_emergencyLock_BlocksWithdraw() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
         vault.emergencyLock(24 hours);
@@ -362,10 +325,7 @@ contract WatcherTest is Test {
         assertGt(secondLock, firstLock);
     }
 
-    function test_emergencyLock_DoesNotDecreaseTimer()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_emergencyLock_DoesNotDecreaseTimer() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
         vault.emergencyLock(24 hours);
@@ -383,10 +343,7 @@ contract WatcherTest is Test {
     }
 
     // Lock expires exactly at block.timestamp — should be unlocked
-    function test_emergencyLock_expiresAtExactTimestamp()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_emergencyLock_expiresAtExactTimestamp() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
         vault.emergencyLock(24 hours);
@@ -406,10 +363,7 @@ contract WatcherTest is Test {
 
     // Extend lock while NOT currently locked (lockedUntil is 0 or past)
     // unlockTime = block.timestamp + duration > 0 → should always pass LockNotExtended
-    function test_emergencyLock_whenNotCurrentlyLocked_alwaysPasses()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_emergencyLock_whenNotCurrentlyLocked_alwaysPasses() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
         // lockedUntil is 0 — any duration passes LockNotExtended
@@ -429,10 +383,7 @@ contract WatcherTest is Test {
     }
 
     // Min duration boundary — exactly 1 hour should succeed
-    function test_emergencyLock_minDurationBoundary()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_emergencyLock_minDurationBoundary() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
         vault.emergencyLock(1 hours);
@@ -451,10 +402,7 @@ contract WatcherTest is Test {
     }
 
     // Max duration boundary
-    function test_emergencyLock_maxDurationBoundary()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_emergencyLock_maxDurationBoundary() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
         // Exactly MAX_LOCK_DURATION should succeed
@@ -474,11 +422,7 @@ contract WatcherTest is Test {
     }
 
     // One user's emergency lock doesn't affect another user
-    function test_emergencyLock_isolatedPerUser()
-        public
-        deposited(leti, 1 ether)
-        deposited(shai, 1 ether)
-    {
+    function test_emergencyLock_isolatedPerUser() public deposited(leti, 1 ether) deposited(shai, 1 ether) {
         vm.prank(leti);
         vault.emergencyLock(24 hours);
 
@@ -540,10 +484,7 @@ contract WatcherTest is Test {
         assertEq(eveAfterBlance, eveBeforeBalance + 0.9 ether);
     }
 
-    function test_emergencyLock_doesNotWithdrawToSafe()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_emergencyLock_doesNotWithdrawToSafe() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
         vault.setSafeAddress(shai);
@@ -567,10 +508,7 @@ contract WatcherTest is Test {
     ============================================================
     */
 
-    function test_suspiciousPattern_triggersPending()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_suspiciousPattern_triggersPending() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
         // Small withdraw (<5%)
@@ -588,10 +526,7 @@ contract WatcherTest is Test {
 
     // lastWithdrawPercent resets properly after window expires
     // User does small withdraw, waits 72h, does large withdraw — should NOT trigger Rule 2
-    function test_suspiciousPattern_triggers_afterWindowReset()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_suspiciousPattern_triggers_afterWindowReset() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
         vault.withdraw(0.04 ether); // Small withdraw (<5%)
@@ -607,10 +542,7 @@ contract WatcherTest is Test {
     }
 
     // Exactly 5% should NOT trigger isLastWithdrawSmall (rule is lastPercent < 5)
-    function test_suspiciousPattern_boundary_5percent()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_suspiciousPattern_boundary_5percent() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
         vault.withdraw(0.05 ether); // exactly 5% — NOT < 5, so Rule 2 won't flag next withdraw
@@ -628,10 +560,7 @@ contract WatcherTest is Test {
             CUMMULATIVE WINDOW RULE 3
     ============================================================
     */
-    function test_cumulativeWithdraw_triggersDelay()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_cumulativeWithdraw_triggersDelay() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
         vault.withdraw(0.1 ether);
@@ -644,10 +573,7 @@ contract WatcherTest is Test {
         vm.stopPrank();
     }
 
-    function test_cumulativeWithdraw_windowResetsAfterDuration()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_cumulativeWithdraw_windowResetsAfterDuration() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
         vault.withdraw(0.3 ether);
@@ -662,10 +588,7 @@ contract WatcherTest is Test {
     // User withdraws 20%, then deposits more ETH, then withdraws again
     // The window tracks percent of balance at time of each withdrawal
     // Does a deposit "dilute" the accumulated percent or not?
-    function test_cumulativeWithdraw_depositDuringWindow_doesNotResetAccumulation()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_cumulativeWithdraw_depositDuringWindow_doesNotResetAccumulation() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
         // 20% of 1 ETH → accumulated = 20, balance = 0.8 ETH
@@ -684,10 +607,7 @@ contract WatcherTest is Test {
     }
 
     // Withdraw exactly 30% — should NOT trigger (rule uses > 30, not >= 30)
-    function test_cumulativeWithdraw_exactBoundary_singleWithdraw()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_cumulativeWithdraw_exactBoundary_singleWithdraw() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
         vault.withdraw(0.3 ether); // exactly 30% of 1 ETH → accumulated = 30
@@ -729,10 +649,7 @@ contract WatcherTest is Test {
         assertFalse(vault.hasPendingWithdraw(shai));
     }
 
-    function test_cancelWithdraw_doesNotIncreaseWindow()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_cancelWithdraw_doesNotIncreaseWindow() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
         vault.withdraw(0.8 ether);
@@ -750,10 +667,7 @@ contract WatcherTest is Test {
     ============================================================
     */
 
-    function test_setSafeAddress_reverts_ifZeroOrAlreadySet()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_setSafeAddress_reverts_ifZeroOrAlreadySet() public deposited(leti, 1 ether) {
         vm.prank(leti);
         vm.expectRevert(Watcher.InvalidSafeAddress.selector);
         vault.setSafeAddress(address(0));
@@ -766,10 +680,7 @@ contract WatcherTest is Test {
         vault.setSafeAddress(eve);
     }
 
-    function test_setSafeAddresse_reverts_ifInvalidAddress()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_setSafeAddresse_reverts_ifInvalidAddress() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
         vm.expectRevert(Watcher.InvalidSafeAddress.selector);
@@ -787,10 +698,7 @@ contract WatcherTest is Test {
         assertEq(safe, shai);
     }
 
-    function test_requestSafeAddressChange_reverts_whileEmergencyLocked()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_requestSafeAddressChange_reverts_whileEmergencyLocked() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
         vault.setSafeAddress(shai);
@@ -806,10 +714,7 @@ contract WatcherTest is Test {
         assertEq(vault.pendingSafeAddress(leti), address(0));
     }
 
-    function test_requestSafeAddressChange_reverts_ifNotSetOrPendingExists()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_requestSafeAddressChange_reverts_ifNotSetOrPendingExists() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
         vm.expectRevert(Watcher.SafeAddressNotSet.selector);
         vault.requestSafeAddressChange(shai);
@@ -823,10 +728,7 @@ contract WatcherTest is Test {
         vm.stopPrank();
     }
 
-    function test_requestSafeAddressChange_reverts_ifInvalidAddressOrHasPending()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_requestSafeAddressChange_reverts_ifInvalidAddressOrHasPending() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
         vault.setSafeAddress(shai);
 
@@ -843,10 +745,7 @@ contract WatcherTest is Test {
         vm.stopPrank();
     }
 
-    function test_requestSafeAddressChange_reverts_ifPendingWithdrawExists()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_requestSafeAddressChange_reverts_ifPendingWithdrawExists() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
         vault.setSafeAddress(shai);
 
@@ -858,24 +757,15 @@ contract WatcherTest is Test {
         vm.stopPrank();
     }
 
-    function test_requestSafeAddressChange_success()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_requestSafeAddressChange_success() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
         vault.setSafeAddress(shai);
 
         vm.expectEmit(true, true, false, true);
-        emit Watcher.SafeAddressChangeRequested(
-            shai,
-            eve,
-            block.timestamp + 24 hours
-        );
+        emit Watcher.SafeAddressChangeRequested(shai, eve, block.timestamp + 24 hours);
         vault.requestSafeAddressChange(eve);
 
-        (address pendingSafe, uint256 unlockTime) = vault.getPendingSafeChange(
-            address(leti)
-        );
+        (address pendingSafe, uint256 unlockTime) = vault.getPendingSafeChange(address(leti));
 
         assertEq(pendingSafe, eve);
         assertEq(unlockTime, 24 hours);
@@ -883,20 +773,14 @@ contract WatcherTest is Test {
         vm.stopPrank();
     }
 
-    function test_confirmSafeAddressChange_reverts_ifNoPending()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_confirmSafeAddressChange_reverts_ifNoPending() public deposited(leti, 1 ether) {
         vm.prank(leti);
 
         vm.expectRevert(Watcher.NoPendingSafeChange.selector);
         vault.confirmSafeAddressChange();
     }
 
-    function test_confirmSafeAddressChange_reverts_ifDelayNotOver()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_confirmSafeAddressChange_reverts_ifDelayNotOver() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
         vault.setSafeAddress(shai);
@@ -908,10 +792,7 @@ contract WatcherTest is Test {
         vm.stopPrank();
     }
 
-    function test_confirmSafeAddressChange_whileEmergencyLocked()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_confirmSafeAddressChange_whileEmergencyLocked() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
         vault.setSafeAddress(shai);
@@ -933,10 +814,7 @@ contract WatcherTest is Test {
         assertEq(vault.pendingSafeAddress(leti), eve); // pending still exists
     }
 
-    function test_confirmSafeAddressChange_success()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_confirmSafeAddressChange_success() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
         vault.setSafeAddress(shai);
@@ -951,9 +829,7 @@ contract WatcherTest is Test {
         address newSafe = vault.safeAddress(leti);
         assertEq(newSafe, eve);
 
-        (address pendingSafe, uint256 unlockTime) = vault.getPendingSafeChange(
-            leti
-        );
+        (address pendingSafe, uint256 unlockTime) = vault.getPendingSafeChange(leti);
 
         assertEq(pendingSafe, address(0));
         assertEq(unlockTime, 0);
@@ -961,20 +837,14 @@ contract WatcherTest is Test {
         vm.stopPrank();
     }
 
-    function test_cancelSafeAddressChange_reverts_ifNoPending()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_cancelSafeAddressChange_reverts_ifNoPending() public deposited(leti, 1 ether) {
         vm.prank(leti);
 
         vm.expectRevert(Watcher.NoPendingSafeChange.selector);
         vault.cancelSafeAddressChange();
     }
 
-    function test_cancelSafeAddressChange_success()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_cancelSafeAddressChange_success() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
         vault.setSafeAddress(shai);
@@ -984,9 +854,7 @@ contract WatcherTest is Test {
         emit Watcher.SafeAddressChangeCancelled(leti);
         vault.cancelSafeAddressChange();
 
-        (address pendingSafe, uint256 unlockTime) = vault.getPendingSafeChange(
-            leti
-        );
+        (address pendingSafe, uint256 unlockTime) = vault.getPendingSafeChange(leti);
 
         assertEq(pendingSafe, address(0));
         assertEq(unlockTime, 0);
@@ -997,10 +865,7 @@ contract WatcherTest is Test {
         vm.stopPrank();
     }
 
-    function test_withdrawToSafe_reverts_ifEmergencyLockIsActive()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_withdrawToSafe_reverts_ifEmergencyLockIsActive() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
         vault.setSafeAddress(shai);
         vault.emergencyLock(24 hours);
@@ -1009,20 +874,14 @@ contract WatcherTest is Test {
         vault.withdrawToSafe(1 ether);
     }
 
-    function test_withdrawToSafe_reverts_ifSafeNotSet()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_withdrawToSafe_reverts_ifSafeNotSet() public deposited(leti, 1 ether) {
         vm.prank(leti);
 
         vm.expectRevert(Watcher.SafeAddressNotSet.selector);
         vault.withdrawToSafe(1 ether);
     }
 
-    function test_withdrawToSafe_reverts_ifPendingWithdrawExists()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_withdrawToSafe_reverts_ifPendingWithdrawExists() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
         vault.setSafeAddress(shai);
@@ -1035,10 +894,7 @@ contract WatcherTest is Test {
         vm.stopPrank();
     }
 
-    function test_withdrawToSafe_reverts_ifAmountZero()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_withdrawToSafe_reverts_ifAmountZero() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
         vault.setSafeAddress(shai);
@@ -1054,37 +910,24 @@ contract WatcherTest is Test {
 
         vault.setSafeAddress(shai);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(Watcher.InsufficientBalance.selector, 0)
-        );
+        vm.expectRevert(abi.encodeWithSelector(Watcher.InsufficientBalance.selector, 0));
         vault.withdrawToSafe(1 ether);
 
         vm.stopPrank();
     }
 
-    function test_withdrawToSafe_reverts_ifAmountExceedsBalance()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_withdrawToSafe_reverts_ifAmountExceedsBalance() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
         vault.setSafeAddress(shai);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                Watcher.InsufficientBalance.selector,
-                1 ether
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(Watcher.InsufficientBalance.selector, 1 ether));
         vault.withdrawToSafe(2 ether);
 
         vm.stopPrank();
     }
 
-    function test_withdrawToSafe_success_andClearsUserBalance()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_withdrawToSafe_success_andClearsUserBalance() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
         vault.setSafeAddress(shai);
@@ -1105,10 +948,7 @@ contract WatcherTest is Test {
         vm.stopPrank();
     }
 
-    function test_withdrawToSafe_partialAmount_leavesRemainderAndUpdatesWindow()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_withdrawToSafe_partialAmount_leavesRemainderAndUpdatesWindow() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
         vault.setSafeAddress(shai);
@@ -1126,10 +966,7 @@ contract WatcherTest is Test {
         assertEq(vault.withdrawnInWindow(leti), 40); // window tracks the % sent
     }
 
-    function test_withdrawToSafe_withUpdatedSafeAddress()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_withdrawToSafe_withUpdatedSafeAddress() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
         vault.setSafeAddress(shai);
@@ -1194,7 +1031,7 @@ contract WatcherTest is Test {
         vm.prank(leti);
         vault.withdraw(0.8 ether);
 
-        (uint256 pendingAmount, , ) = vault.getPendingWithdraw(leti);
+        (uint256 pendingAmount,,) = vault.getPendingWithdraw(leti);
 
         uint256 total = vault.totalBalance();
 
@@ -1242,7 +1079,7 @@ contract WatcherTest is Test {
     function test_receiveFunctionDeposit() public {
         vm.prank(leti);
 
-        (bool success, ) = address(vault).call{value: 1 ether}("");
+        (bool success,) = address(vault).call{value: 1 ether}("");
 
         assertTrue(success);
 
@@ -1252,10 +1089,7 @@ contract WatcherTest is Test {
     }
 
     // Cancel pending, deposit more, withdraw again — full cycle
-    function test_fullCycle_cancelDepositWithdraw()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_fullCycle_cancelDepositWithdraw() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
         // Trigger pending
@@ -1338,8 +1172,7 @@ contract WatcherTest is Test {
 
         vault.withdraw(0.8 ether);
 
-        (uint256 amount, uint256 unlockTime, uint256 requestTime) = vault
-            .getPendingWithdraw(leti);
+        (uint256 amount, uint256 unlockTime, uint256 requestTime) = vault.getPendingWithdraw(leti);
 
         assertEq(amount, 0.8 ether);
         assertGt(unlockTime, requestTime);
@@ -1410,7 +1243,6 @@ contract WatcherTest is Test {
             uint256 pendingAmount,
             uint256 remainingPendingTime,
             bool locked,
-
         ) = vault.getUserState(leti);
 
         assertEq(balance, 0.2 ether);
@@ -1423,30 +1255,20 @@ contract WatcherTest is Test {
         vm.stopPrank();
     }
 
-    function test_getPendingSafeChange_returnsZero_ifNone()
-        public
-        deposited(leti, 1 ether)
-    {
-        (address pendingSafe, uint256 unlockTime) = vault.getPendingSafeChange(
-            leti
-        );
+    function test_getPendingSafeChange_returnsZero_ifNone() public deposited(leti, 1 ether) {
+        (address pendingSafe, uint256 unlockTime) = vault.getPendingSafeChange(leti);
 
         assertEq(pendingSafe, address(0));
         assertEq(unlockTime, 0);
     }
 
-    function test_getPendingSafeChange_returnsPendingData()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_getPendingSafeChange_returnsPendingData() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
         vault.setSafeAddress(shai);
         vault.requestSafeAddressChange(eve);
 
-        (address pendingSafe, uint256 unlockTime) = vault.getPendingSafeChange(
-            leti
-        );
+        (address pendingSafe, uint256 unlockTime) = vault.getPendingSafeChange(leti);
 
         assertEq(pendingSafe, eve);
         assertEq(unlockTime, 24 hours);
@@ -1454,10 +1276,7 @@ contract WatcherTest is Test {
         vm.stopPrank();
     }
 
-    function test_getPendingSafeChange_returnsZero_afterCancel()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_getPendingSafeChange_returnsZero_afterCancel() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
         vault.setSafeAddress(shai);
@@ -1465,9 +1284,7 @@ contract WatcherTest is Test {
 
         vault.cancelSafeAddressChange();
 
-        (address pendingSafe, uint256 unlockTime) = vault.getPendingSafeChange(
-            leti
-        );
+        (address pendingSafe, uint256 unlockTime) = vault.getPendingSafeChange(leti);
 
         assertEq(pendingSafe, address(0));
         assertEq(unlockTime, 0);
@@ -1519,8 +1336,7 @@ contract WatcherTest is Test {
         vm.startPrank(leti);
         vault.registerLedgerSigner(ledgerSignerAddr);
 
-        uint256 expectedUnlock = block.timestamp +
-            vault.SAFE_ADDRESS_CHANGE_DELAY();
+        uint256 expectedUnlock = block.timestamp + vault.SAFE_ADDRESS_CHANGE_DELAY();
 
         vm.expectEmit(true, true, false, true);
         emit Watcher.LedgerSignerChangeRequested(leti, shai, expectedUnlock);
@@ -1557,9 +1373,7 @@ contract WatcherTest is Test {
         vm.stopPrank();
     }
 
-    function test_requestLedgerSignerChange_toZeroAddress_requestsRemoval()
-        public
-    {
+    function test_requestLedgerSignerChange_toZeroAddress_requestsRemoval() public {
         vm.startPrank(leti);
         vault.registerLedgerSigner(ledgerSignerAddr);
         vault.requestLedgerSignerChange(address(0));
@@ -1617,9 +1431,7 @@ contract WatcherTest is Test {
         vm.stopPrank();
     }
 
-    function test_confirmLedgerSignerChange_removal_deletesLedgerSigner()
-        public
-    {
+    function test_confirmLedgerSignerChange_removal_deletesLedgerSigner() public {
         vm.startPrank(leti);
         vault.registerLedgerSigner(ledgerSignerAddr);
         vault.requestLedgerSignerChange(address(0));
@@ -1669,10 +1481,7 @@ contract WatcherTest is Test {
 
     // ---- executeWithdraw signature verification ----
 
-    function test_executeWithdraw_withValidLedgerSignature_succeeds()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_executeWithdraw_withValidLedgerSignature_succeeds() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
         vault.registerLedgerSigner(ledgerSignerAddr);
 
@@ -1691,10 +1500,7 @@ contract WatcherTest is Test {
         assertFalse(vault.hasPendingWithdraw(leti));
     }
 
-    function test_executeWithdraw_withInvalidSignature_reverts()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_executeWithdraw_withInvalidSignature_reverts() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
         vault.registerLedgerSigner(ledgerSignerAddr);
 
@@ -1711,10 +1517,7 @@ contract WatcherTest is Test {
         vm.stopPrank();
     }
 
-    function test_executeWithdraw_withNoLedgerSigner_emptyBytes_succeeds()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_executeWithdraw_withNoLedgerSigner_emptyBytes_succeeds() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
 
         uint256 withdrawAmount = 0.8 ether;
@@ -1729,10 +1532,7 @@ contract WatcherTest is Test {
         assertEq(leti.balance, beforeBalance + withdrawAmount);
     }
 
-    function test_executeWithdraw_withWrongAmount_inSignature_reverts()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_executeWithdraw_withWrongAmount_inSignature_reverts() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
         vault.registerLedgerSigner(ledgerSignerAddr);
 
@@ -1749,10 +1549,7 @@ contract WatcherTest is Test {
         vm.stopPrank();
     }
 
-    function test_executeWithdraw_withWrongChainId_inSignature_reverts()
-        public
-        deposited(leti, 1 ether)
-    {
+    function test_executeWithdraw_withWrongChainId_inSignature_reverts() public deposited(leti, 1 ether) {
         vm.startPrank(leti);
         vault.registerLedgerSigner(ledgerSignerAddr);
 
@@ -1762,9 +1559,7 @@ contract WatcherTest is Test {
         vm.warp(block.timestamp + 12 hours);
 
         // Signed digest uses a different chainid than the current one
-        bytes32 hash = keccak256(
-            abi.encodePacked(leti, withdrawAmount, block.chainid + 1)
-        );
+        bytes32 hash = keccak256(abi.encodePacked(leti, withdrawAmount, block.chainid + 1));
         bytes32 digest = MessageHashUtils.toEthSignedMessageHash(hash);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(LEDGER_KEY, digest);
         bytes memory sig = abi.encodePacked(r, s, v);
@@ -1777,8 +1572,7 @@ contract WatcherTest is Test {
     // ---- getLedgerSignerState ----
 
     function test_getLedgerSignerState_noSigner() public view {
-        (address current, address pending, uint256 remaining) = vault
-            .getLedgerSignerState(leti);
+        (address current, address pending, uint256 remaining) = vault.getLedgerSignerState(leti);
 
         assertEq(current, address(0));
         assertEq(pending, address(0));
@@ -1789,8 +1583,7 @@ contract WatcherTest is Test {
         vm.prank(leti);
         vault.registerLedgerSigner(ledgerSignerAddr);
 
-        (address current, address pending, uint256 remaining) = vault
-            .getLedgerSignerState(leti);
+        (address current, address pending, uint256 remaining) = vault.getLedgerSignerState(leti);
 
         assertEq(current, ledgerSignerAddr);
         assertEq(pending, address(0));
@@ -1803,8 +1596,7 @@ contract WatcherTest is Test {
         vault.requestLedgerSignerChange(shai);
         vm.stopPrank();
 
-        (address current, address pending, uint256 remaining) = vault
-            .getLedgerSignerState(leti);
+        (address current, address pending, uint256 remaining) = vault.getLedgerSignerState(leti);
 
         assertEq(current, ledgerSignerAddr);
         assertEq(pending, shai);

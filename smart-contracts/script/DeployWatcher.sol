@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import {Script, console} from "forge-std/Script.sol";
 import {Watcher} from "../src/Watcher.sol";
 
-contract DeployLockFi is Script {
+contract DeployWatcher is Script {
     function run() external {
         vm.startBroadcast();
 
@@ -15,6 +15,6 @@ contract DeployLockFi is Script {
         vm.stopBroadcast();
 
         // Log deployed address
-        console.log("LockFi deployed at:", address(vault));
+        console.log("Deployed at:", address(vault));
     }
 }
