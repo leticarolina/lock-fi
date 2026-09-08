@@ -2,17 +2,17 @@
 pragma solidity ^0.8.20;
 
 import {Test} from "forge-std/Test.sol";
-import {LockFi} from "../src/LockFi.sol";
+import {Watcher} from "../src/Watcher.sol";
 
 /**
- * @title LockFi Integration Tests
+ * @title Watcher Integration Tests
  * @notice Integration tests simulate realistic end-to-end attack and user scenarios
  * across multiple contract interactions. Unlike unit tests which test individual
  * functions in isolation, these tests verify that the full system behaves correctly
  * when functions are composed together in real-world sequences.
  */
-contract LockFiIntegrationTest is Test {
-    LockFi vault;
+contract WatcherIntegrationTest is Test {
+    Watcher vault;
 
     // Actors
     address user = makeAddr("user");
@@ -23,7 +23,7 @@ contract LockFiIntegrationTest is Test {
     uint256 constant INITIAL_BALANCE = 10 ether;
 
     function setUp() public {
-        vault = new LockFi();
+        vault = new Watcher();
         vm.deal(user, INITIAL_BALANCE);
         vm.deal(attacker, INITIAL_BALANCE);
     }
@@ -70,7 +70,7 @@ contract LockFiIntegrationTest is Test {
 
         // Large drain is now pending, NOT executed
         assertTrue(vault.hasPendingWithdraw(user));
-        (uint256 pendingAmount,,) = vault.getPendingWithdraw(user);
+        (uint256 pendingAmount, , ) = vault.getPendingWithdraw(user);
         assertEq(pendingAmount, 3 ether);
 
         // Funds are deducted from balance but sitting in pending — not sent yet
@@ -93,12 +93,12 @@ contract LockFiIntegrationTest is Test {
 
         // Attacker tries to withdraw again while locked — blocked
         vm.prank(user);
-        vm.expectRevert(LockFi.EmergencyLockOngoing.selector);
+        vm.expectRevert(Watcher.EmergencyLockOngoing.selector);
         vault.withdraw(4 ether);
 
         // Attacker tries to change safe address while locked — blocked
         vm.prank(user);
-        vm.expectRevert(LockFi.EmergencyLockOngoing.selector);
+        vm.expectRevert(Watcher.EmergencyLockOngoing.selector);
         vault.requestSafeAddressChange(attackerWallet);
 
         // --- USER RECOVERS FUNDS ---
@@ -147,7 +147,7 @@ contract LockFiIntegrationTest is Test {
         vault.requestSafeAddressChange(attackerWallet);
 
         // Change is pending — not yet active
-        (address pendingSafe,) = vault.getPendingSafeChange(user);
+        (address pendingSafe, ) = vault.getPendingSafeChange(user);
         assertEq(pendingSafe, attackerWallet);
         assertEq(vault.safeAddress(user), safeWallet); // still original
 
@@ -158,7 +158,7 @@ contract LockFiIntegrationTest is Test {
         vault.cancelSafeAddressChange();
 
         // Pending change cleared, safe address unchanged
-        (address pendingSafeAfter,) = vault.getPendingSafeChange(user);
+        (address pendingSafeAfter, ) = vault.getPendingSafeChange(user);
         assertEq(pendingSafeAfter, address(0));
         assertEq(vault.safeAddress(user), safeWallet);
 
@@ -168,7 +168,7 @@ contract LockFiIntegrationTest is Test {
 
         // Attacker tries to request safe address change again — blocked by lock
         vm.prank(user);
-        vm.expectRevert(LockFi.EmergencyLockOngoing.selector);
+        vm.expectRevert(Watcher.EmergencyLockOngoing.selector);
         vault.requestSafeAddressChange(attackerWallet);
 
         // --- USER RECOVERS ---
@@ -218,23 +218,23 @@ contract LockFiIntegrationTest is Test {
 
         // --- ATTACKER TRIES TO QUEUE SAFE ADDRESS CHANGE DURING LOCK ---
         vm.prank(user); // attacker using compromised key
-        vm.expectRevert(LockFi.EmergencyLockOngoing.selector);
+        vm.expectRevert(Watcher.EmergencyLockOngoing.selector);
         vault.requestSafeAddressChange(attackerWallet);
 
         // Attacker tries to withdraw during lock — blocked
         vm.prank(user);
-        vm.expectRevert(LockFi.EmergencyLockOngoing.selector);
+        vm.expectRevert(Watcher.EmergencyLockOngoing.selector);
         vault.withdraw(4 ether);
 
         // Attacker tries to shorten lock — blocked
         vm.warp(block.timestamp + 1 hours);
         vm.prank(user);
-        vm.expectRevert(LockFi.LockNotExtended.selector);
+        vm.expectRevert(Watcher.LockNotExtended.selector);
         vault.emergencyLock(1 hours); // would expire sooner than current lock
 
         // Safe address still unchanged, no pending change
         assertEq(vault.safeAddress(user), safeWallet);
-        (address pendingSafe,) = vault.getPendingSafeChange(user);
+        (address pendingSafe, ) = vault.getPendingSafeChange(user);
         assertEq(pendingSafe, address(0));
 
         // --- USER EXTENDS LOCK FOR EXTRA SAFETY ---
@@ -249,7 +249,7 @@ contract LockFiIntegrationTest is Test {
         assertTrue(vault.isVaultLocked(user)); // still locked due to extension
 
         vm.prank(user);
-        vm.expectRevert(LockFi.EmergencyLockOngoing.selector);
+        vm.expectRevert(Watcher.EmergencyLockOngoing.selector);
         vault.requestSafeAddressChange(attackerWallet);
 
         // --- USER RECOVERS AT EXTENDED EXPIRY ---

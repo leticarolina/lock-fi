@@ -6,9 +6,9 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 /**
- * @title LockFi
+ * @title Watcher
  * @author Leticia Azevedo (@letiweb3)
- * @notice LockFi is a self-custody security vault that protects users from instant fund drainage
+ * @notice Watcher is a self-custody security vault that protects users from instant fund drainage
  * by introducing behavioral risk detection on withdrawals. Suspicious or large withdrawals are
  * delayed instead of executed immediately, giving users a reaction window to cancel, lock the
  * vault, or route funds to a pre-registered safe address before any funds leaves the contract.
@@ -19,7 +19,7 @@ import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/Messa
  * require a 24-hour delay and are blocked during emergency lock.
  * Deployed on Monad Testnet. 1st Place — Monad Hackathon 2026.
  */
-contract LockFi is ReentrancyGuard {
+contract Watcher is ReentrancyGuard {
     error AmountZero();
     error InsufficientBalance(uint256 balance);
     error PendingWithdrawExists();
@@ -97,7 +97,10 @@ contract LockFi is ReentrancyGuard {
         address indexed newSigner,
         uint256 unlockTime
     );
-    event LedgerSignerChangeConfirmed(address indexed user, address indexed newSigner);
+    event LedgerSignerChangeConfirmed(
+        address indexed user,
+        address indexed newSigner
+    );
     event LedgerSignerChangeCancelled(address indexed user);
 
     /// @notice Deposit native token into the vault.
@@ -763,7 +766,11 @@ contract LockFi is ReentrancyGuard {
     )
         external
         view
-        returns (address currentSigner, address pendingSigner, uint256 remainingTime)
+        returns (
+            address currentSigner,
+            address pendingSigner,
+            uint256 remainingTime
+        )
     {
         currentSigner = ledgerSigner[user];
         pendingSigner = pendingLedgerSigner[user];

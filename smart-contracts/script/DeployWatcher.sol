@@ -2,14 +2,14 @@
 pragma solidity ^0.8.20;
 
 import {Script, console} from "forge-std/Script.sol";
-import {LockFi} from "../src/LockFi.sol";
+import {Watcher} from "../src/Watcher.sol";
 
 contract DeployLockFi is Script {
     function run() external {
         vm.startBroadcast();
 
         // Deploy contract
-        LockFi vault = new LockFi();
+        Watcher vault = new Watcher();
 
         // Stop broadcasting
         vm.stopBroadcast();

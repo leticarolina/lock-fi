@@ -2,21 +2,21 @@
 pragma solidity ^0.8.20;
 
 import {Test} from "forge-std/Test.sol";
-import {LockFi} from "../src/LockFi.sol";
+import {Watcher} from "../src/Watcher.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 /**
- * @title LockFi Test Suite
+ * @title Watcher Test Suite
  * @author Leticia Azevedo
- * @notice Unit tests for LockFi.sol covering all contract functions, risk detection rules,
+ * @notice Unit tests for Watcher.sol covering all contract functions, risk detection rules,
  * edge cases, and behavioral invariants. Tests are organized by feature area.
  * @dev Test coverage includes: deposit/withdraw lifecycle, risk detection rules (Rule 1, 2, 3),
  * pending withdrawal queue (execute/cancel), emergency lock mechanics, safe address management,
  * withdrawToSafe flow, multi-user state isolation, and getter correctness.
  * Uses Foundry (forge-std). Actor addresses: leti (primary), shai, eve (secondary/safe targets).
  */
-contract LockFiTest is Test {
-    LockFi vault;
+contract WatcherTest is Test {
+    Watcher vault;
 
     address leti = address(1);
     address shai = address(2);
@@ -29,7 +29,7 @@ contract LockFiTest is Test {
     address ledgerSignerAddr;
 
     function setUp() public {
-        vault = new LockFi();
+        vault = new Watcher();
 
         // Fund test users
         vm.deal(leti, INITIAL_BALANCE);
@@ -51,9 +51,7 @@ contract LockFiTest is Test {
         address user,
         uint256 amount
     ) internal view returns (bytes memory) {
-        bytes32 hash = keccak256(
-            abi.encodePacked(user, amount, block.chainid)
-        );
+        bytes32 hash = keccak256(abi.encodePacked(user, amount, block.chainid));
         bytes32 digest = MessageHashUtils.toEthSignedMessageHash(hash);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, digest);
 
@@ -73,7 +71,7 @@ contract LockFiTest is Test {
 
     function test_deposit_zeroAmount() public {
         vm.prank(leti);
-        vm.expectRevert(LockFi.AmountZero.selector);
+        vm.expectRevert(Watcher.AmountZero.selector);
         vault.deposit();
 
         uint256 balance = vault.balances(leti);
@@ -129,7 +127,7 @@ contract LockFiTest is Test {
     function test_withdraw_zeroAmountReverts() public deposited(leti, 1 ether) {
         vm.prank(leti);
 
-        vm.expectRevert(LockFi.AmountZero.selector);
+        vm.expectRevert(Watcher.AmountZero.selector);
 
         vault.withdraw(0);
     }
@@ -141,7 +139,10 @@ contract LockFiTest is Test {
         vm.prank(leti);
 
         vm.expectRevert(
-            abi.encodeWithSelector(LockFi.InsufficientBalance.selector, 1 ether)
+            abi.encodeWithSelector(
+                Watcher.InsufficientBalance.selector,
+                1 ether
+            )
         );
         vault.withdraw(2 ether);
     }
@@ -154,7 +155,7 @@ contract LockFiTest is Test {
 
         vault.withdraw(0.8 ether);
 
-        vm.expectRevert(LockFi.PendingWithdrawExists.selector);
+        vm.expectRevert(Watcher.PendingWithdrawExists.selector);
 
         vault.withdraw(0.1 ether);
 
@@ -194,7 +195,7 @@ contract LockFiTest is Test {
     {
         vm.prank(leti);
 
-        vm.expectRevert(LockFi.NoPendingWithdraw.selector);
+        vm.expectRevert(Watcher.NoPendingWithdraw.selector);
 
         vault.cancelWithdraw();
     }
@@ -213,7 +214,7 @@ contract LockFiTest is Test {
         assertFalse(hasPending);
 
         // Nothing left to cancel manually — emergencyLock already did it
-        vm.expectRevert(LockFi.NoPendingWithdraw.selector);
+        vm.expectRevert(Watcher.NoPendingWithdraw.selector);
         vault.cancelWithdraw();
 
         vm.stopPrank();
@@ -252,7 +253,7 @@ contract LockFiTest is Test {
 
         vault.withdraw(withdrawAmount);
 
-        vm.expectRevert(LockFi.TimeoutNotOver.selector);
+        vm.expectRevert(Watcher.TimeoutNotOver.selector);
 
         vault.executeWithdraw("");
 
@@ -265,7 +266,7 @@ contract LockFiTest is Test {
     {
         vm.prank(leti);
 
-        vm.expectRevert(LockFi.NoPendingWithdraw.selector);
+        vm.expectRevert(Watcher.NoPendingWithdraw.selector);
 
         vault.executeWithdraw("");
     }
@@ -328,12 +329,12 @@ contract LockFiTest is Test {
 
         vault.emergencyLock(24 hours);
 
-        vm.expectRevert(LockFi.EmergencyLockOngoing.selector);
+        vm.expectRevert(Watcher.EmergencyLockOngoing.selector);
 
         vault.withdraw(0.1 ether);
 
         vm.warp(block.timestamp + 23 hours); //move forward but still within lock duration
-        vm.expectRevert(LockFi.EmergencyLockOngoing.selector);
+        vm.expectRevert(Watcher.EmergencyLockOngoing.selector);
         vault.withdraw(0.1 ether);
 
         vm.warp(block.timestamp + 2 hours); //move forward past lock duration
@@ -373,7 +374,7 @@ contract LockFiTest is Test {
 
         vm.warp(block.timestamp + 4 hours);
 
-        vm.expectRevert(LockFi.LockNotExtended.selector);
+        vm.expectRevert(Watcher.LockNotExtended.selector);
         vault.emergencyLock(2 hours); // must be longer than remaining time, which is 23 hours
 
         vm.stopPrank();
@@ -443,7 +444,7 @@ contract LockFiTest is Test {
         vm.startPrank(shai);
         vault.deposit{value: 1 ether}();
 
-        vm.expectRevert(LockFi.DurationTooShort.selector);
+        vm.expectRevert(Watcher.DurationTooShort.selector);
         vault.emergencyLock(1 hours - 10 seconds);
 
         vm.stopPrank();
@@ -466,7 +467,7 @@ contract LockFiTest is Test {
         vm.startPrank(shai);
         vault.deposit{value: 1 ether}();
 
-        vm.expectRevert(LockFi.DurationTooLong.selector);
+        vm.expectRevert(Watcher.DurationTooLong.selector);
         vault.emergencyLock(30 days + 1 seconds);
 
         vm.stopPrank();
@@ -494,7 +495,7 @@ contract LockFiTest is Test {
 
         // Leti is still blocked
         vm.prank(leti);
-        vm.expectRevert(LockFi.EmergencyLockOngoing.selector);
+        vm.expectRevert(Watcher.EmergencyLockOngoing.selector);
         vault.withdraw(0.1 ether);
     }
 
@@ -512,7 +513,7 @@ contract LockFiTest is Test {
         assertFalse(hasPending);
 
         // Nothing left to cancel manually — emergencyLock already did it
-        vm.expectRevert(LockFi.NoPendingWithdraw.selector);
+        vm.expectRevert(Watcher.NoPendingWithdraw.selector);
         vault.cancelWithdraw();
 
         vm.stopPrank();
@@ -550,7 +551,7 @@ contract LockFiTest is Test {
 
         uint256 safeBalanceBefore = shai.balance;
 
-        vm.expectRevert(LockFi.EmergencyLockOngoing.selector);
+        vm.expectRevert(Watcher.EmergencyLockOngoing.selector);
         vault.withdrawToSafe(1 ether);
         vm.stopPrank();
 
@@ -637,7 +638,7 @@ contract LockFiTest is Test {
         vault.withdraw(0.1 ether);
         vault.withdraw(0.1 ether);
 
-        vm.expectRevert(LockFi.PendingWithdrawExists.selector);
+        vm.expectRevert(Watcher.PendingWithdrawExists.selector);
         vault.withdraw(0.1 ether);
 
         vm.stopPrank();
@@ -754,14 +755,14 @@ contract LockFiTest is Test {
         deposited(leti, 1 ether)
     {
         vm.prank(leti);
-        vm.expectRevert(LockFi.InvalidSafeAddress.selector);
+        vm.expectRevert(Watcher.InvalidSafeAddress.selector);
         vault.setSafeAddress(address(0));
 
         vm.prank(leti);
         vault.setSafeAddress(shai);
 
         vm.prank(leti);
-        vm.expectRevert(LockFi.SafeAddressAlreadySet.selector);
+        vm.expectRevert(Watcher.SafeAddressAlreadySet.selector);
         vault.setSafeAddress(eve);
     }
 
@@ -771,7 +772,7 @@ contract LockFiTest is Test {
     {
         vm.startPrank(leti);
 
-        vm.expectRevert(LockFi.InvalidSafeAddress.selector);
+        vm.expectRevert(Watcher.InvalidSafeAddress.selector);
         vault.setSafeAddress(leti); // same as sender
         vm.stopPrank();
     }
@@ -779,7 +780,7 @@ contract LockFiTest is Test {
     function test_setSafeAddress_success() public deposited(leti, 1 ether) {
         vm.prank(leti);
         vm.expectEmit(true, false, false, true);
-        emit LockFi.SafeAddressSet(leti, shai);
+        emit Watcher.SafeAddressSet(leti, shai);
         vault.setSafeAddress(shai);
 
         address safe = vault.safeAddress(leti);
@@ -795,7 +796,7 @@ contract LockFiTest is Test {
         vault.setSafeAddress(shai);
         vault.emergencyLock(24 hours);
 
-        vm.expectRevert(LockFi.EmergencyLockOngoing.selector);
+        vm.expectRevert(Watcher.EmergencyLockOngoing.selector);
         vault.requestSafeAddressChange(eve);
 
         vm.stopPrank();
@@ -810,13 +811,13 @@ contract LockFiTest is Test {
         deposited(leti, 1 ether)
     {
         vm.startPrank(leti);
-        vm.expectRevert(LockFi.SafeAddressNotSet.selector);
+        vm.expectRevert(Watcher.SafeAddressNotSet.selector);
         vault.requestSafeAddressChange(shai);
 
         vault.setSafeAddress(shai);
         vault.requestSafeAddressChange(eve);
 
-        vm.expectRevert(LockFi.PendingSafeChangeExists.selector);
+        vm.expectRevert(Watcher.PendingSafeChangeExists.selector);
         vault.requestSafeAddressChange(address(0x04));
 
         vm.stopPrank();
@@ -829,14 +830,14 @@ contract LockFiTest is Test {
         vm.startPrank(leti);
         vault.setSafeAddress(shai);
 
-        vm.expectRevert(LockFi.InvalidSafeAddress.selector);
+        vm.expectRevert(Watcher.InvalidSafeAddress.selector);
         vault.requestSafeAddressChange(leti); // same as sender
 
-        vm.expectRevert(LockFi.SafeAddressAlreadySet.selector);
+        vm.expectRevert(Watcher.SafeAddressAlreadySet.selector);
         vault.requestSafeAddressChange(shai); // same as current safe
 
         vault.requestSafeAddressChange(eve); // valid change
-        vm.expectRevert(LockFi.PendingSafeChangeExists.selector);
+        vm.expectRevert(Watcher.PendingSafeChangeExists.selector);
         vault.requestSafeAddressChange(address(0x04)); // another change while pending
 
         vm.stopPrank();
@@ -851,7 +852,7 @@ contract LockFiTest is Test {
 
         vault.withdraw(0.8 ether); // >60% → pending
 
-        vm.expectRevert(LockFi.PendingWithdrawalExists.selector);
+        vm.expectRevert(Watcher.PendingWithdrawalExists.selector);
         vault.requestSafeAddressChange(eve);
 
         vm.stopPrank();
@@ -865,7 +866,7 @@ contract LockFiTest is Test {
         vault.setSafeAddress(shai);
 
         vm.expectEmit(true, true, false, true);
-        emit LockFi.SafeAddressChangeRequested(
+        emit Watcher.SafeAddressChangeRequested(
             shai,
             eve,
             block.timestamp + 24 hours
@@ -888,7 +889,7 @@ contract LockFiTest is Test {
     {
         vm.prank(leti);
 
-        vm.expectRevert(LockFi.NoPendingSafeChange.selector);
+        vm.expectRevert(Watcher.NoPendingSafeChange.selector);
         vault.confirmSafeAddressChange();
     }
 
@@ -901,7 +902,7 @@ contract LockFiTest is Test {
         vault.setSafeAddress(shai);
         vault.requestSafeAddressChange(eve);
 
-        vm.expectRevert(LockFi.SafeChangeDelayNotOver.selector);
+        vm.expectRevert(Watcher.SafeChangeDelayNotOver.selector);
         vault.confirmSafeAddressChange();
 
         vm.stopPrank();
@@ -922,7 +923,7 @@ contract LockFiTest is Test {
         vm.warp(block.timestamp + 24 hours);
 
         // confirm is blocked during emergency lock
-        vm.expectRevert(LockFi.EmergencyLockOngoing.selector);
+        vm.expectRevert(Watcher.EmergencyLockOngoing.selector);
         vault.confirmSafeAddressChange();
 
         vm.stopPrank();
@@ -944,7 +945,7 @@ contract LockFiTest is Test {
         vm.warp(block.timestamp + 24 hours);
 
         vm.expectEmit(true, true, false, true);
-        emit LockFi.SafeAddressChangeConfirmed(leti, eve);
+        emit Watcher.SafeAddressChangeConfirmed(leti, eve);
         vault.confirmSafeAddressChange();
 
         address newSafe = vault.safeAddress(leti);
@@ -966,7 +967,7 @@ contract LockFiTest is Test {
     {
         vm.prank(leti);
 
-        vm.expectRevert(LockFi.NoPendingSafeChange.selector);
+        vm.expectRevert(Watcher.NoPendingSafeChange.selector);
         vault.cancelSafeAddressChange();
     }
 
@@ -980,7 +981,7 @@ contract LockFiTest is Test {
         vault.requestSafeAddressChange(eve);
 
         vm.expectEmit(true, false, false, true);
-        emit LockFi.SafeAddressChangeCancelled(leti);
+        emit Watcher.SafeAddressChangeCancelled(leti);
         vault.cancelSafeAddressChange();
 
         (address pendingSafe, uint256 unlockTime) = vault.getPendingSafeChange(
@@ -1004,7 +1005,7 @@ contract LockFiTest is Test {
         vault.setSafeAddress(shai);
         vault.emergencyLock(24 hours);
 
-        vm.expectRevert(LockFi.EmergencyLockOngoing.selector);
+        vm.expectRevert(Watcher.EmergencyLockOngoing.selector);
         vault.withdrawToSafe(1 ether);
     }
 
@@ -1014,7 +1015,7 @@ contract LockFiTest is Test {
     {
         vm.prank(leti);
 
-        vm.expectRevert(LockFi.SafeAddressNotSet.selector);
+        vm.expectRevert(Watcher.SafeAddressNotSet.selector);
         vault.withdrawToSafe(1 ether);
     }
 
@@ -1028,7 +1029,7 @@ contract LockFiTest is Test {
 
         vault.withdraw(0.8 ether); // >60% → pending
 
-        vm.expectRevert(LockFi.PendingWithdrawalExists.selector);
+        vm.expectRevert(Watcher.PendingWithdrawalExists.selector);
         vault.withdrawToSafe(0.1 ether); // remaining balance is 0.2 ether
 
         vm.stopPrank();
@@ -1042,7 +1043,7 @@ contract LockFiTest is Test {
 
         vault.setSafeAddress(shai);
 
-        vm.expectRevert(LockFi.AmountZero.selector);
+        vm.expectRevert(Watcher.AmountZero.selector);
         vault.withdrawToSafe(0);
 
         vm.stopPrank();
@@ -1054,7 +1055,7 @@ contract LockFiTest is Test {
         vault.setSafeAddress(shai);
 
         vm.expectRevert(
-            abi.encodeWithSelector(LockFi.InsufficientBalance.selector, 0)
+            abi.encodeWithSelector(Watcher.InsufficientBalance.selector, 0)
         );
         vault.withdrawToSafe(1 ether);
 
@@ -1070,7 +1071,10 @@ contract LockFiTest is Test {
         vault.setSafeAddress(shai);
 
         vm.expectRevert(
-            abi.encodeWithSelector(LockFi.InsufficientBalance.selector, 1 ether)
+            abi.encodeWithSelector(
+                Watcher.InsufficientBalance.selector,
+                1 ether
+            )
         );
         vault.withdrawToSafe(2 ether);
 
@@ -1088,7 +1092,7 @@ contract LockFiTest is Test {
         uint256 safeBalanceBefore = shai.balance;
 
         vm.expectEmit(true, true, false, true);
-        emit LockFi.WithdrawToSafe(leti, shai, 1 ether);
+        emit Watcher.WithdrawToSafe(leti, shai, 1 ether);
         vault.withdrawToSafe(1 ether);
 
         uint256 safeBalanceAfter = shai.balance;
@@ -1112,7 +1116,7 @@ contract LockFiTest is Test {
         uint256 safeBalanceBefore = shai.balance;
 
         vm.expectEmit(true, true, false, true);
-        emit LockFi.WithdrawToSafe(leti, shai, 0.4 ether);
+        emit Watcher.WithdrawToSafe(leti, shai, 0.4 ether);
         vault.withdrawToSafe(0.4 ether); // 40% of balance, partial
 
         vm.stopPrank();
@@ -1482,7 +1486,7 @@ contract LockFiTest is Test {
     function test_registerLedgerSigner_success() public {
         vm.prank(leti);
         vm.expectEmit(true, true, false, true);
-        emit LockFi.LedgerSignerRegistered(leti, ledgerSignerAddr);
+        emit Watcher.LedgerSignerRegistered(leti, ledgerSignerAddr);
         vault.registerLedgerSigner(ledgerSignerAddr);
 
         assertEq(vault.ledgerSigner(leti), ledgerSignerAddr);
@@ -1492,20 +1496,20 @@ contract LockFiTest is Test {
         vm.startPrank(leti);
         vault.registerLedgerSigner(ledgerSignerAddr);
 
-        vm.expectRevert(LockFi.LedgerSignerAlreadySet.selector);
+        vm.expectRevert(Watcher.LedgerSignerAlreadySet.selector);
         vault.registerLedgerSigner(shai);
         vm.stopPrank();
     }
 
     function test_registerLedgerSigner_reverts_ifZeroAddress() public {
         vm.prank(leti);
-        vm.expectRevert(LockFi.InvalidSignature.selector);
+        vm.expectRevert(Watcher.InvalidSignature.selector);
         vault.registerLedgerSigner(address(0));
     }
 
     function test_registerLedgerSigner_reverts_ifSelf() public {
         vm.prank(leti);
-        vm.expectRevert(LockFi.InvalidSignature.selector);
+        vm.expectRevert(Watcher.InvalidSignature.selector);
         vault.registerLedgerSigner(leti);
     }
 
@@ -1519,7 +1523,7 @@ contract LockFiTest is Test {
             vault.SAFE_ADDRESS_CHANGE_DELAY();
 
         vm.expectEmit(true, true, false, true);
-        emit LockFi.LedgerSignerChangeRequested(leti, shai, expectedUnlock);
+        emit Watcher.LedgerSignerChangeRequested(leti, shai, expectedUnlock);
         vault.requestLedgerSignerChange(shai);
         vm.stopPrank();
 
@@ -1529,7 +1533,7 @@ contract LockFiTest is Test {
 
     function test_requestLedgerSignerChange_reverts_ifNoSignerSet() public {
         vm.prank(leti);
-        vm.expectRevert(LockFi.NoLedgerSignerSet.selector);
+        vm.expectRevert(Watcher.NoLedgerSignerSet.selector);
         vault.requestLedgerSignerChange(shai);
     }
 
@@ -1538,7 +1542,7 @@ contract LockFiTest is Test {
         vault.registerLedgerSigner(ledgerSignerAddr);
         vault.requestLedgerSignerChange(shai);
 
-        vm.expectRevert(LockFi.PendingLedgerChangeExists.selector);
+        vm.expectRevert(Watcher.PendingLedgerChangeExists.selector);
         vault.requestLedgerSignerChange(eve);
         vm.stopPrank();
     }
@@ -1548,7 +1552,7 @@ contract LockFiTest is Test {
         vault.registerLedgerSigner(ledgerSignerAddr);
         vault.emergencyLock(1 hours);
 
-        vm.expectRevert(LockFi.EmergencyLockOngoing.selector);
+        vm.expectRevert(Watcher.EmergencyLockOngoing.selector);
         vault.requestLedgerSignerChange(shai);
         vm.stopPrank();
     }
@@ -1575,7 +1579,7 @@ contract LockFiTest is Test {
         vm.warp(block.timestamp + vault.SAFE_ADDRESS_CHANGE_DELAY());
 
         vm.expectEmit(true, true, false, true);
-        emit LockFi.LedgerSignerChangeConfirmed(leti, shai);
+        emit Watcher.LedgerSignerChangeConfirmed(leti, shai);
         vault.confirmLedgerSignerChange();
         vm.stopPrank();
 
@@ -1586,7 +1590,7 @@ contract LockFiTest is Test {
 
     function test_confirmLedgerSignerChange_reverts_ifNoPending() public {
         vm.prank(leti);
-        vm.expectRevert(LockFi.NoPendingLedgerChange.selector);
+        vm.expectRevert(Watcher.NoPendingLedgerChange.selector);
         vault.confirmLedgerSignerChange();
     }
 
@@ -1595,7 +1599,7 @@ contract LockFiTest is Test {
         vault.registerLedgerSigner(ledgerSignerAddr);
         vault.requestLedgerSignerChange(shai);
 
-        vm.expectRevert(LockFi.LedgerChangeDelayNotOver.selector);
+        vm.expectRevert(Watcher.LedgerChangeDelayNotOver.selector);
         vault.confirmLedgerSignerChange();
         vm.stopPrank();
     }
@@ -1608,7 +1612,7 @@ contract LockFiTest is Test {
         vm.warp(block.timestamp + vault.SAFE_ADDRESS_CHANGE_DELAY());
         vault.emergencyLock(1 hours);
 
-        vm.expectRevert(LockFi.EmergencyLockOngoing.selector);
+        vm.expectRevert(Watcher.EmergencyLockOngoing.selector);
         vault.confirmLedgerSignerChange();
         vm.stopPrank();
     }
@@ -1635,7 +1639,7 @@ contract LockFiTest is Test {
         vault.requestLedgerSignerChange(shai);
 
         vm.expectEmit(true, false, false, true);
-        emit LockFi.LedgerSignerChangeCancelled(leti);
+        emit Watcher.LedgerSignerChangeCancelled(leti);
         vault.cancelLedgerSignerChange();
         vm.stopPrank();
 
@@ -1645,7 +1649,7 @@ contract LockFiTest is Test {
 
     function test_cancelLedgerSignerChange_reverts_ifNoPending() public {
         vm.prank(leti);
-        vm.expectRevert(LockFi.NoPendingLedgerChange.selector);
+        vm.expectRevert(Watcher.NoPendingLedgerChange.selector);
         vault.cancelLedgerSignerChange();
     }
 
@@ -1702,7 +1706,7 @@ contract LockFiTest is Test {
         uint256 wrongKey = 0xC0FFEE;
         bytes memory sig = _signLedger(wrongKey, leti, withdrawAmount);
 
-        vm.expectRevert(LockFi.InvalidSignature.selector);
+        vm.expectRevert(Watcher.InvalidSignature.selector);
         vault.executeWithdraw(sig);
         vm.stopPrank();
     }
@@ -1738,13 +1742,9 @@ contract LockFiTest is Test {
         vm.warp(block.timestamp + 12 hours);
 
         // Signed digest uses a different amount than the pending withdrawal
-        bytes memory sig = _signLedger(
-            LEDGER_KEY,
-            leti,
-            withdrawAmount + 1
-        );
+        bytes memory sig = _signLedger(LEDGER_KEY, leti, withdrawAmount + 1);
 
-        vm.expectRevert(LockFi.InvalidSignature.selector);
+        vm.expectRevert(Watcher.InvalidSignature.selector);
         vault.executeWithdraw(sig);
         vm.stopPrank();
     }
@@ -1769,7 +1769,7 @@ contract LockFiTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(LEDGER_KEY, digest);
         bytes memory sig = abi.encodePacked(r, s, v);
 
-        vm.expectRevert(LockFi.InvalidSignature.selector);
+        vm.expectRevert(Watcher.InvalidSignature.selector);
         vault.executeWithdraw(sig);
         vm.stopPrank();
     }
