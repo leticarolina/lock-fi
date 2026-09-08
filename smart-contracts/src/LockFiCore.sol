@@ -3,6 +3,9 @@ pragma solidity ^0.8.20;
 
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+// ** CORE PROTOCOL, NO INTEGRATIONS **
+// ** CORE PROTOCOL, NO INTEGRATIONS **
+// ** CORE PROTOCOL, NO INTEGRATIONS **
 /**
  * @title LockFi
  * @author Leticia Azevedo (@letiweb3)
