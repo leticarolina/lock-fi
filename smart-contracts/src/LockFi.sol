@@ -2,6 +2,8 @@
 pragma solidity ^0.8.20;
 
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 /**
  * @title LockFi
@@ -35,6 +37,12 @@ contract LockFi is ReentrancyGuard {
     error DurationTooShort();
     error DurationTooLong();
     error LockNotExtended();
+    error NoLedgerSignerSet();
+    error InvalidSignature();
+    error LedgerSignerAlreadySet();
+    error PendingLedgerChangeExists();
+    error NoPendingLedgerChange();
+    error LedgerChangeDelayNotOver();
 
     uint256 public constant DELAY = 12 hours;
     uint256 public constant MIN_LOCK_DURATION = 1 hours;
@@ -52,6 +60,9 @@ contract LockFi is ReentrancyGuard {
     mapping(address => uint256) public safeChangeUnlockTime; // Tracks when pending safe address change can be executed.
     mapping(address => uint256) public withdrawnInWindow; // Tracks cumulative withdrawn % in current window for each user
     mapping(address => uint256) public windowStartTime; // Tracks start time of current window for cumulative withdrawal %
+    mapping(address => address) public ledgerSigner; // Registered Ledger-derived address required to co-sign executeWithdraw, per vault.
+    mapping(address => address) public pendingLedgerSigner; // Pending Ledger signer change, requires delay before execution.
+    mapping(address => uint256) public ledgerSignerChangeUnlockTime; // Tracks when pending Ledger signer change can be executed.
 
     //Pending withdrawal structure, each user can only have ONE pending withdrawal.
     struct WithdrawalRequest {
@@ -80,6 +91,14 @@ contract LockFi is ReentrancyGuard {
     event SafeAddressChangeConfirmed(address indexed user, address newSafe);
     event SafeAddressChangeCancelled(address indexed user); //should show cancelled address too
     event WithdrawToSafe(address indexed user, address safe, uint256 amount);
+    event LedgerSignerRegistered(address indexed user, address indexed signer);
+    event LedgerSignerChangeRequested(
+        address indexed user,
+        address indexed newSigner,
+        uint256 unlockTime
+    );
+    event LedgerSignerChangeConfirmed(address indexed user, address indexed newSigner);
+    event LedgerSignerChangeCancelled(address indexed user);
 
     /// @notice Deposit native token into the vault.
     /// @dev Balance is tracked internally. Emits Deposited event.
@@ -160,7 +179,13 @@ contract LockFi is ReentrancyGuard {
     /// @notice Execute a pending withdrawal after the delay has expired.
     /// @dev Blocked during emergency lock even if the pending request was created before the lock.
     /// This prevents an attacker who queued a withdrawal from executing it after the user locks.
-    function executeWithdraw() external nonReentrant {
+    /// If a Ledger signer is registered for msg.sender, a signature over
+    /// keccak256(abi.encodePacked(msg.sender, pendingWithdraw[msg.sender].amount, block.chainid))
+    /// must be provided and must recover to the registered ledgerSigner, adding a hardware-wallet
+    /// co-signature requirement on top of the existing delay. If no Ledger signer is registered,
+    /// the signature parameter is ignored and execution proceeds as before.
+    /// @param signature ECDSA signature from the registered Ledger signer, or empty bytes if none is registered.
+    function executeWithdraw(bytes calldata signature) external nonReentrant {
         WithdrawalRequest storage req = pendingWithdraw[msg.sender];
         uint256 executeAmount = req.amount;
 
@@ -172,6 +197,21 @@ contract LockFi is ReentrancyGuard {
         }
         if (block.timestamp < lockedUntil[msg.sender]) {
             revert EmergencyLockOngoing();
+        }
+
+        address signer = ledgerSigner[msg.sender];
+        if (signer != address(0)) {
+            bytes32 hash = keccak256(
+                abi.encodePacked(msg.sender, executeAmount, block.chainid)
+            );
+            address recovered = ECDSA.recover(
+                MessageHashUtils.toEthSignedMessageHash(hash),
+                signature
+            );
+
+            if (recovered != signer) {
+                revert InvalidSignature();
+            }
         }
 
         delete pendingWithdraw[msg.sender];
@@ -473,6 +513,106 @@ contract LockFi is ReentrancyGuard {
 
     /*
     ============================================================
+                    LEDGER SIGNER MANAGEMENT
+    ============================================================
+    */
+
+    /// @notice Register a Ledger hardware wallet-derived address as a required co-signer for executeWithdraw.
+    /// @dev No delay required for initial setup — there is no existing Ledger signer to protect.
+    /// Once set, use requestLedgerSignerChange to change or remove it. This is purely optional:
+    /// a user who never registers a Ledger signer keeps the original executeWithdraw behavior.
+    /// @param signer The Ledger-derived address to register.
+    function registerLedgerSigner(address signer) external {
+        if (ledgerSigner[msg.sender] != address(0)) {
+            revert LedgerSignerAlreadySet();
+        }
+
+        if (signer == address(0)) {
+            revert InvalidSignature();
+        }
+
+        if (signer == msg.sender) {
+            revert InvalidSignature();
+        }
+
+        ledgerSigner[msg.sender] = signer;
+
+        emit LedgerSignerRegistered(msg.sender, signer);
+    }
+
+    /// @notice Request a change to the registered Ledger signer. Takes effect after 24 hours.
+    /// @dev Blocked during emergency lock. The 24-hour delay prevents an attacker with a
+    /// compromised key from immediately swapping out the Ledger signer requirement.
+    /// Passing address(0) requests removal of the Ledger signer requirement entirely.
+    /// Only one pending change allowed at a time.
+    /// @param newSigner The new Ledger-derived address to require, or address(0) to request removal.
+    function requestLedgerSignerChange(address newSigner) external {
+        if (lockedUntil[msg.sender] > block.timestamp) {
+            revert EmergencyLockOngoing();
+        }
+
+        if (ledgerSigner[msg.sender] == address(0)) {
+            revert NoLedgerSignerSet();
+        }
+
+        if (ledgerSignerChangeUnlockTime[msg.sender] != 0) {
+            revert PendingLedgerChangeExists();
+        }
+
+        uint256 unlockTime = block.timestamp + SAFE_ADDRESS_CHANGE_DELAY;
+
+        pendingLedgerSigner[msg.sender] = newSigner;
+        ledgerSignerChangeUnlockTime[msg.sender] = unlockTime;
+
+        emit LedgerSignerChangeRequested(msg.sender, newSigner, unlockTime);
+    }
+
+    /// @notice Confirm a pending Ledger signer change after the delay has expired.
+    /// @dev Blocked during emergency lock. If the pending change requested removal (address(0)),
+    /// the ledgerSigner mapping is deleted, restoring unrestricted executeWithdraw for the user.
+    function confirmLedgerSignerChange() external {
+        if (lockedUntil[msg.sender] > block.timestamp) {
+            revert EmergencyLockOngoing();
+        }
+
+        if (ledgerSignerChangeUnlockTime[msg.sender] == 0) {
+            revert NoPendingLedgerChange();
+        }
+
+        if (block.timestamp < ledgerSignerChangeUnlockTime[msg.sender]) {
+            revert LedgerChangeDelayNotOver();
+        }
+
+        address newSigner = pendingLedgerSigner[msg.sender];
+
+        if (newSigner == address(0)) {
+            delete ledgerSigner[msg.sender];
+        } else {
+            ledgerSigner[msg.sender] = newSigner;
+        }
+
+        delete pendingLedgerSigner[msg.sender];
+        delete ledgerSignerChangeUnlockTime[msg.sender];
+
+        emit LedgerSignerChangeConfirmed(msg.sender, newSigner);
+    }
+
+    /// @notice Cancel a pending Ledger signer change. Restores the previous Ledger signer requirement.
+    /// @dev Intentionally NOT blocked during emergency lock. Cancelling is always a safe action
+    /// and the user may need to cancel a malicious pending change while the vault is locked.
+    function cancelLedgerSignerChange() external {
+        if (ledgerSignerChangeUnlockTime[msg.sender] == 0) {
+            revert NoPendingLedgerChange();
+        }
+
+        delete pendingLedgerSigner[msg.sender];
+        delete ledgerSignerChangeUnlockTime[msg.sender];
+
+        emit LedgerSignerChangeCancelled(msg.sender);
+    }
+
+    /*
+    ============================================================
                     VIEW HELPERS
     ============================================================
     */
@@ -613,5 +753,27 @@ contract LockFi is ReentrancyGuard {
     /// @notice Returns the total ETH balance held by the contract across all users.
     function totalBalance() external view returns (uint256) {
         return address(this).balance;
+    }
+
+    /// @notice Returns the registered Ledger signer, any pending change, and the remaining delay.
+    /// @dev remainingTime is 0 if there is no pending change or if the delay has already elapsed.
+    /// @param user The address whose Ledger signer state is being queried.
+    function getLedgerSignerState(
+        address user
+    )
+        external
+        view
+        returns (address currentSigner, address pendingSigner, uint256 remainingTime)
+    {
+        currentSigner = ledgerSigner[user];
+        pendingSigner = pendingLedgerSigner[user];
+
+        uint256 unlockTime = ledgerSignerChangeUnlockTime[user];
+
+        if (unlockTime == 0 || block.timestamp >= unlockTime) {
+            return (currentSigner, pendingSigner, 0);
+        }
+
+        remainingTime = unlockTime - block.timestamp;
     }
 }
