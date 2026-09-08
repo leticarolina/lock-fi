@@ -78,12 +78,8 @@ contract LockFi is ReentrancyGuard {
         uint256 unlockTime
     );
     event SafeAddressChangeConfirmed(address indexed user, address newSafe);
-    event SafeAddressChangeCancelled(address indexed user);
-    event EmergencyWithdrawToSafe(
-        address indexed user,
-        address safe,
-        uint256 amount
-    );
+    event SafeAddressChangeCancelled(address indexed user); //should show cancelled address too
+    event WithdrawToSafe(address indexed user, address safe, uint256 amount);
 
     /// @notice Deposit native token into the vault.
     /// @dev Balance is tracked internally. Emits Deposited event.
@@ -131,8 +127,8 @@ contract LockFi is ReentrancyGuard {
 
         bool risky = _isRisky(msg.sender, amount, userBalance); //Determine whether withdrawal is risky
         uint256 withdrawPercent = (amount * 100) / userBalance; // Calculate withdrawal percentage for lastWithdrawPercent tracking
-        balances[msg.sender] -= amount; // Deduct balance immediately
         lastWithdrawPercent[msg.sender] = withdrawPercent; // Update last withdrawal %
+        balances[msg.sender] -= amount; // Deduct balance immediately
 
         //if risky - create a pending request
         if (risky) {
@@ -210,6 +206,9 @@ contract LockFi is ReentrancyGuard {
     /// @notice Activate emergency lock for a user-defined duration.
     /// @dev Lock can only be extended, never shortened. Any call where block.timestamp + duration
     /// would result in an earlier unlock than the current lockedUntil reverts with LockNotExtended.
+    /// Automatically cancels any pending withdrawal on activation and restores the amount to the
+    /// user's vault balance. This prevents an attacker who queued a withdrawal from executing it
+    /// after the user locks — the funds are returned to the vault and the request is erased.
     /// Blocks withdraw, executeWithdraw, requestSafeAddressChange, confirmSafeAddressChange,
     /// and withdrawToSafe while active.
     /// @param duration Lock duration in seconds. Must be between MIN_LOCK_DURATION and MAX_LOCK_DURATION.
@@ -220,6 +219,14 @@ contract LockFi is ReentrancyGuard {
         uint256 unlockTime = block.timestamp + duration;
         if (unlockTime < lockedUntil[msg.sender]) revert LockNotExtended();
         lockedUntil[msg.sender] = unlockTime;
+
+        // Auto-cancel any pending withdrawal on lock
+        uint256 pending = pendingWithdraw[msg.sender].amount;
+        if (pending != 0) {
+            balances[msg.sender] += pending;
+            delete pendingWithdraw[msg.sender];
+            emit WithdrawalCancelled(msg.sender, pending);
+        }
 
         emit EmergencyLockActivated(msg.sender, unlockTime);
     }
@@ -426,15 +433,20 @@ contract LockFi is ReentrancyGuard {
         emit SafeAddressChangeCancelled(msg.sender);
     }
 
-    /// @notice Send the entire vault balance to the registered safe address.
+    /// @notice Send a specified amount from the vault balance to the registered safe address.
     /// @dev Blocked during emergency lock. The lock is an absolute freeze — nothing leaves
     /// the vault while locked, including withdrawToSafe. This ensures the passive protection
     /// use case (locking for an extended period) cannot be bypassed via the safe address path.
-    /// Sets withdrawnInWindow to 100 and resets the window timer directly.
-    function withdrawToSafe() external nonReentrant {
+    /// Accepts a partial or full amount. Updates the withdrawal window with the percentage
+    /// sent relative to the balance at the time of the call. Cannot be called while a
+    /// pending withdrawal exists.
+    /// @param amount The amount of native token to send to the safe address.
+    function withdrawToSafe(uint256 amount) external nonReentrant {
         if (lockedUntil[msg.sender] > block.timestamp) {
             revert EmergencyLockOngoing();
         }
+
+        if (amount == 0) revert AmountZero();
 
         address safe = safeAddress[msg.sender];
         if (safe == address(0)) {
@@ -445,19 +457,18 @@ contract LockFi is ReentrancyGuard {
             revert PendingWithdrawalExists();
         }
 
-        uint256 amount = balances[msg.sender];
+        uint256 userBalance = balances[msg.sender];
+        if (amount > userBalance) revert InsufficientBalance(userBalance);
+        balances[msg.sender] -= amount;
 
-        if (amount == 0) {
-            revert AmountZero();
-        }
-
-        balances[msg.sender] = 0;
-
+        // if full balance, set window to 100
+        // if partial, calculate percent normally
+        uint256 percent = (amount * 100) / userBalance;
         windowStartTime[msg.sender] = block.timestamp;
-        withdrawnInWindow[msg.sender] = 100;
-        _sendEth(safe, amount);
+        withdrawnInWindow[msg.sender] = percent;
 
-        emit EmergencyWithdrawToSafe(msg.sender, safe, amount);
+        _sendEth(safe, amount);
+        emit WithdrawToSafe(msg.sender, safe, amount);
     }
 
     /*

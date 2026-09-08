@@ -109,7 +109,7 @@ contract LockFiIntegrationTest is Test {
         uint256 safeBalanceBefore = safeWallet.balance;
 
         vm.prank(user);
-        vault.withdrawToSafe();
+        vault.withdrawToSafe(4.8 ether);
 
         // All remaining funds sent to safe wallet — attacker got nothing beyond the probe
         assertEq(vault.balances(user), 0);
@@ -178,7 +178,7 @@ contract LockFiIntegrationTest is Test {
         uint256 attackerWalletBefore = attackerWallet.balance;
 
         vm.prank(user);
-        vault.withdrawToSafe();
+        vault.withdrawToSafe(3 ether);
 
         // Funds went to legitimate safe wallet, attacker wallet untouched
         assertEq(safeWallet.balance, safeBalanceBefore + 3 ether);
@@ -259,7 +259,7 @@ contract LockFiIntegrationTest is Test {
         uint256 safeBalanceBefore = safeWallet.balance;
 
         vm.prank(user);
-        vault.withdrawToSafe();
+        vault.withdrawToSafe(4 ether);
 
         assertEq(safeWallet.balance, safeBalanceBefore + 4 ether);
         assertEq(vault.balances(user), 0);
