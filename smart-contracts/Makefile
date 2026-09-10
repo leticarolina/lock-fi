@@ -57,7 +57,8 @@ simulate:
 deploy-sepolia:
 	forge script script/DeployWatcher.sol \
 	--rpc-url $(RPC_URL_SEPOLIA) \
-	--account $(ACCOUNT) \
+	--account acc3 \
+	--sender 0x0944f6502a7e99f073750000c4f7889611a706c6 \
 	--broadcast \
 	--verify \
 	--etherscan-api-key $(ETHERSCAN_API_KEY) \
