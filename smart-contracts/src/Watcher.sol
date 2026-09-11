@@ -44,11 +44,11 @@ contract Watcher is ReentrancyGuard {
     error NoPendingLedgerChange();
     error LedgerChangeDelayNotOver();
 
-    uint256 public constant DELAY = 12 hours;
-    uint256 public constant MIN_LOCK_DURATION = 1 hours;
+    uint256 public constant DELAY = 2 minutes;
+    uint256 public constant MIN_LOCK_DURATION = 1 minutes;
     uint256 public constant MAX_LOCK_DURATION = 30 days;
-    uint256 public constant SAFE_ADDRESS_CHANGE_DELAY = 24 hours;
-    uint256 public constant WINDOW_DURATION_FOR_MAX_WITHDRAW = 72 hours;
+    uint256 public constant SAFE_ADDRESS_CHANGE_DELAY = 2 minutes;
+    uint256 public constant WINDOW_DURATION_FOR_MAX_WITHDRAW = 5 minutes;
     uint256 public constant MAX_INSTANT_WITHDRAW_PERCENT = 30;
 
     mapping(address => uint256) public balances; //Tracks withdrawable funds

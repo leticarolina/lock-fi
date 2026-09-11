@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+@theme {
+  --color-navy: #0f172a;
+  --color-teal: #0f766e;
+  --color-amber: #f59e0b;
+  --color-red: #dc2626;
+  --color-cloud: #f8fafc;
+
+  --font-manrope: "Manrope", sans-serif;
+  --font-inter: "Inter", sans-serif;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-navy);
+  color: var(--color-cloud);
+  font-family: var(--font-inter);
+}
