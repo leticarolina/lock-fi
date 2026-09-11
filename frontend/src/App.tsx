@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import {
   useAccount,
@@ -47,25 +48,95 @@ function maskAddress(address: string | undefined): string {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Dashboard tab — UserStateDisplay, DepositForm, WithdrawForm            */
-/* Logic unchanged from the previous step, styling only.                  */
+/* Overview tab — Card, BalanceCard, SecurityStatusCard, DepositForm,     */
+/* WithdrawForm. Logic unchanged from the previous step, styling only.    */
 /* ---------------------------------------------------------------------- */
 
-function UserStateDisplay({ data }: { data: UserState | undefined }) {
-  if (!data) return <p className="text-sm text-cloud/50">No data returned from getUserState.</p>
+// Bare structural shell shared by every card in the Overview layout —
+// callers supply their own border/bg color and padding via className so
+// tone variants (e.g. the amber/red-tinted Security Status card) don't
+// fight the default neutral colors in the Tailwind cascade.
+function Card({ className = '', children }: { className?: string; children: React.ReactNode }) {
+  return <div className={`rounded-2xl border ${className}`}>{children}</div>
+}
 
-  const [balance, instantLimit, hasPending, pendingAmount, remainingPendingTime, isLocked, remainingLockTime] = data
+function BalanceCard({
+  balance,
+  instantLimit,
+}: {
+  balance: bigint | undefined
+  instantLimit: bigint | undefined
+}) {
+  return (
+    <Card className="border-cloud/10 bg-cloud/5 p-5 md:col-span-2">
+      <p className="text-sm text-cloud/60">Total Balance</p>
+      <p className="mt-1 font-manrope text-4xl font-bold text-cloud sm:text-5xl">
+        {formatEth(balance)} <span className="text-2xl font-semibold text-cloud/50">ETH</span>
+      </p>
+      <p className="mt-2 text-sm text-cloud/50">
+        Instant withdrawal limit: <span className="font-mono text-cloud/70">{formatEth(instantLimit)} ETH</span>
+      </p>
+    </Card>
+  )
+}
+
+// Reads as Healthy (teal) when nothing's going on, otherwise reflects
+// whichever active state is more severe — a Containment lock outranks a
+// merely-pending withdrawal since activating it auto-cancels any pending one.
+// No countdown/detail line here on purpose — the Security Queue card right
+// below already shows the pending amount and unlock countdown; repeating it
+// here was pure duplication.
+function SecurityStatusCard({
+  isLocked,
+  hasPending,
+}: {
+  isLocked: boolean | undefined
+  hasPending: boolean | undefined
+}) {
+  const tone = isLocked ? 'locked' : hasPending ? 'pending' : 'healthy'
+
+  const toneStyles = {
+    healthy: { border: 'border-teal/30', bg: 'bg-teal/10', text: 'text-teal', dot: 'bg-teal' },
+    pending: { border: 'border-amber/30', bg: 'bg-amber/10', text: 'text-amber', dot: 'bg-amber' },
+    locked: { border: 'border-red/30', bg: 'bg-red/10', text: 'text-red', dot: 'bg-red' },
+  }[tone]
+
+  const heading = tone === 'healthy' ? 'Healthy' : tone === 'pending' ? 'Withdrawal pending' : 'Containment Mode active'
 
   return (
-    <div className="space-y-1 rounded-lg border border-cloud/10 bg-cloud/5 px-4 py-3 font-mono text-sm text-cloud/80">
-      <p>balance: {formatEth(balance)} ETH</p>
-      <p>instantLimit: {formatEth(instantLimit)} ETH</p>
-      <p>hasPending: {String(hasPending)}</p>
-      <p>pendingAmount: {formatEth(pendingAmount)} ETH</p>
-      <p>remainingPendingTime: {String(remainingPendingTime)}</p>
-      <p>isLocked: {String(isLocked)}</p>
-      <p>remainingLockTime: {String(remainingLockTime)}</p>
-    </div>
+    <Card className={`flex flex-col justify-center gap-2 p-5 ${toneStyles.border} ${toneStyles.bg}`}>
+      <p className="text-sm text-cloud/60">Security Status</p>
+      <div className="flex items-center gap-2">
+        <span className={`h-2.5 w-2.5 rounded-full ${toneStyles.dot}`} />
+        <p className={`font-manrope text-lg font-semibold ${toneStyles.text}`}>{heading}</p>
+      </div>
+    </Card>
+  )
+}
+
+// Static, descriptive-only — communicates the Security Engine framing.
+// No status badge, no live data, no contract reads.
+const SECURITY_RULES = [
+  {
+    title: 'Large Withdrawal Guard',
+    description: 'Withdrawals over 60% of your balance are queued for a timelock instead of executing instantly.',
+  },
+  {
+    title: 'Probe Detection',
+    description: 'A withdrawal under 5% of your balance, followed by any withdrawal, is flagged as a possible probe.',
+  },
+  {
+    title: 'Rolling Window Guard',
+    description: 'Cumulative withdrawals over 30% of your balance within a rolling 72-hour window are queued.',
+  },
+] as const
+
+function RuleCard({ title, description }: { title: string; description: string }) {
+  return (
+    <Card className="border-cloud/10 bg-cloud/5 p-3">
+      <p className="font-manrope text-sm font-semibold text-cloud">{title}</p>
+      <p className="mt-1 text-xs text-cloud/60">{description}</p>
+    </Card>
   )
 }
 
@@ -281,20 +352,22 @@ function WithdrawForm({
 function SecurityQueueSection({
   hasPending,
   pendingAmount,
-  remainingPendingTime,
+  pendingCountdown,
   isLocked,
   lockCountdown,
   onConfirmed,
 }: {
   hasPending: boolean | undefined
   pendingAmount: bigint | undefined
-  remainingPendingTime: bigint | undefined
+  pendingCountdown: number | undefined
   isLocked: boolean | undefined
   lockCountdown: number | undefined
   onConfirmed: () => void
 }) {
-  // Reuses the same live countdown the RecoveryTab pending-change view uses.
-  const countdown = useCountdownSeconds(hasPending ? remainingPendingTime : undefined)
+  // pendingCountdown is lifted from OverviewTab (same pattern as lockCountdown
+  // below) so this section and the Security Status card tick from one shared
+  // clock instead of two independently-anchored, slightly-drifting timers.
+  const countdown = pendingCountdown
   const isReady = countdown !== undefined && countdown <= 0
 
   const {
@@ -417,7 +490,7 @@ function SecurityQueueSection({
   )
 }
 
-function DashboardTab({
+function OverviewTab({
   address,
   userState,
   isLoading,
@@ -434,7 +507,7 @@ function DashboardTab({
   refetch: () => void
   setActiveTab: (tab: TabId) => void
 }) {
-  // Dashboard content unmounts/remounts when the tab is switched away and
+  // Overview content unmounts/remounts when the tab is switched away and
   // back (App only keeps the getUserState *read* lifted, not this view) —
   // refetch on activation so a queue state that changed while this tab was
   // hidden is reflected immediately rather than waiting on a stale cache hit.
@@ -448,15 +521,16 @@ function DashboardTab({
   const isLocked = userState?.[5]
   const remainingLockTime = userState?.[6]
 
-  // Shared with WithdrawForm/SecurityQueueSection below so all three show
-  // the exact same ticking number rather than three independently-anchored
-  // (and thus slightly drifting) countdowns.
+  // Shared with WithdrawForm/SecurityQueueSection/SecurityStatusCard below so
+  // all of them show the exact same ticking numbers rather than independently
+  // anchored (and thus slightly drifting) countdowns.
   const lockCountdown = useCountdownSeconds(isLocked ? remainingLockTime : undefined)
+  const pendingCountdown = useCountdownSeconds(hasPending ? remainingPendingTime : undefined)
 
   return (
-    <div className="max-w-xl space-y-8">
+    <div className="max-w-5xl space-y-4">
       {isLocked && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red/40 bg-red/10 px-4 py-3 text-sm text-red">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red/40 bg-red/10 px-4 py-3 text-sm text-red">
           <div>
             <p className="font-manrope font-semibold">Containment Mode is ACTIVE</p>
             <p>Withdrawals are frozen — unlocks in {lockCountdown !== undefined ? formatDuration(lockCountdown) : '…'}</p>
@@ -471,29 +545,32 @@ function DashboardTab({
         </div>
       )}
 
-      <div className="space-y-2">
-        <h2 className="font-manrope text-lg font-semibold">Dashboard</h2>
-        {isLoading && <p className="text-sm text-cloud/70">Loading getUserState...</p>}
-        {isError && <p className="text-sm text-red">Error calling getUserState: {error?.message}</p>}
-        <UserStateDisplay data={userState} />
+      {isLoading && <p className="text-sm text-cloud/70">Loading getUserState...</p>}
+      {isError && <p className="text-sm text-red">Error calling getUserState: {error?.message}</p>}
+
+      <div className="grid gap-3 md:grid-cols-3">
+        <BalanceCard balance={userState?.[0]} instantLimit={userState?.[1]} />
+        <SecurityStatusCard isLocked={isLocked} hasPending={hasPending} />
       </div>
 
-      <SecurityQueueSection
-        hasPending={hasPending}
-        pendingAmount={pendingAmount}
-        remainingPendingTime={remainingPendingTime}
-        isLocked={isLocked}
-        lockCountdown={lockCountdown}
-        onConfirmed={refetch}
-      />
+      <Card className="border-cloud/10 bg-cloud/5 p-5">
+        <SecurityQueueSection
+          hasPending={hasPending}
+          pendingAmount={pendingAmount}
+          pendingCountdown={pendingCountdown}
+          isLocked={isLocked}
+          lockCountdown={lockCountdown}
+          onConfirmed={refetch}
+        />
+      </Card>
 
-      <div className="grid gap-8 sm:grid-cols-2">
-        <div className="space-y-2">
-          <h3 className="font-manrope text-sm font-semibold text-cloud/80">Deposit</h3>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Card className="border-cloud/10 bg-cloud/5 p-5">
+          <h3 className="mb-2 font-manrope text-sm font-semibold text-cloud/80">Deposit</h3>
           <DepositForm onConfirmed={refetch} />
-        </div>
-        <div className="space-y-2">
-          <h3 className="font-manrope text-sm font-semibold text-cloud/80">Withdraw</h3>
+        </Card>
+        <Card className="border-cloud/10 bg-cloud/5 p-5">
+          <h3 className="mb-2 font-manrope text-sm font-semibold text-cloud/80">Withdraw</h3>
           <WithdrawForm
             address={address}
             instantLimit={userState?.[1]}
@@ -501,6 +578,15 @@ function DashboardTab({
             lockCountdown={lockCountdown}
             onConfirmed={refetch}
           />
+        </Card>
+      </div>
+
+      <div>
+        <h3 className="mb-2 font-manrope text-sm font-semibold text-cloud/80">Security Rules</h3>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {SECURITY_RULES.map((rule) => (
+            <RuleCard key={rule.title} title={rule.title} description={rule.description} />
+          ))}
         </div>
       </div>
     </div>
@@ -618,7 +704,7 @@ function ContainmentModeTab({
       : null
 
   return (
-    <div className="max-w-xl space-y-6">
+    <div className="max-w-xl space-y-4">
       <div>
         <h2 className="font-manrope text-lg font-semibold">Containment Mode</h2>
         <p className="text-sm text-cloud/70">
@@ -626,10 +712,8 @@ function ContainmentModeTab({
         </p>
       </div>
 
-      <div
-        className={`rounded-lg border px-4 py-3 ${
-          isLocked ? 'border-red/40 bg-red/10 text-red' : 'border-teal/40 bg-teal/10 text-teal'
-        }`}
+      <Card
+        className={`p-5 ${isLocked ? 'border-red/40 bg-red/10 text-red' : 'border-teal/40 bg-teal/10 text-teal'}`}
       >
         {isLocked ? (
           <>
@@ -642,64 +726,66 @@ function ContainmentModeTab({
         ) : (
           <p className="font-manrope font-semibold">Inactive</p>
         )}
-      </div>
+      </Card>
 
-      <form onSubmit={handleSubmit} className="space-y-3">
-        <div className="space-y-2">
-          <div className="flex items-center justify-between gap-2">
-            <span className="font-manrope text-sm font-semibold text-cloud">
-              {amountInput || sliderMin} {unit}
-            </span>
-            <select
-              value={unit}
-              onChange={(e) => setUnit(e.target.value as DurationUnit)}
-              className="rounded border border-cloud/20 bg-cloud/5 px-3 py-2 text-sm text-cloud"
-            >
-              <option value="minutes">minutes</option>
-              <option value="hours">hours</option>
-              <option value="days">days</option>
-            </select>
+      <Card className="border-cloud/10 bg-cloud/5 p-5">
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-manrope text-sm font-semibold text-cloud">
+                {amountInput || sliderMin} {unit}
+              </span>
+              <select
+                value={unit}
+                onChange={(e) => setUnit(e.target.value as DurationUnit)}
+                className="rounded border border-cloud/20 bg-cloud/5 px-3 py-2 text-sm text-cloud"
+              >
+                <option value="minutes">minutes</option>
+                <option value="hours">hours</option>
+                <option value="days">days</option>
+              </select>
+            </div>
+
+            {sliderMin !== undefined && sliderMax !== undefined ? (
+              <input
+                type="range"
+                min={sliderMin}
+                max={sliderMax}
+                step={1}
+                value={amountInput || sliderMin}
+                onChange={(e) => setAmountInput(e.target.value)}
+                className="w-full accent-red"
+              />
+            ) : (
+              <p className="text-sm text-cloud/50">Loading duration limits…</p>
+            )}
           </div>
 
-          {sliderMin !== undefined && sliderMax !== undefined ? (
-            <input
-              type="range"
-              min={sliderMin}
-              max={sliderMax}
-              step={1}
-              value={amountInput || sliderMin}
-              onChange={(e) => setAmountInput(e.target.value)}
-              className="w-full accent-red"
-            />
-          ) : (
-            <p className="text-sm text-cloud/50">Loading duration limits…</p>
+          {minLockDuration !== undefined && maxLockDuration !== undefined && (
+            <p className="text-xs text-cloud/50">
+              Allowed range: {formatDuration(Number(minLockDuration))} – {formatDuration(Number(maxLockDuration))}
+            </p>
           )}
-        </div>
+          {validationError && <p className="text-xs text-red">{validationError}</p>}
 
-        {minLockDuration !== undefined && maxLockDuration !== undefined && (
-          <p className="text-xs text-cloud/50">
-            Allowed range: {formatDuration(Number(minLockDuration))} – {formatDuration(Number(maxLockDuration))}
+          <p className="rounded border border-amber/30 bg-amber/10 px-3 py-2 text-xs text-amber">
+            Activating Containment Mode auto-cancels any pending Security Queue withdrawal and refunds it to your
+            vault balance.
           </p>
-        )}
-        {validationError && <p className="text-xs text-red">{validationError}</p>}
 
-        <p className="rounded border border-amber/30 bg-amber/10 px-3 py-2 text-xs text-amber">
-          Activating Containment Mode auto-cancels any pending Security Queue withdrawal and refunds it to your
-          vault balance.
-        </p>
+          <button
+            type="submit"
+            disabled={!canSubmit}
+            className="rounded bg-red px-4 py-2 text-sm font-medium text-cloud disabled:opacity-40"
+          >
+            Activate Containment Mode
+          </button>
 
-        <button
-          type="submit"
-          disabled={!canSubmit}
-          className="rounded bg-red px-4 py-2 text-sm font-medium text-cloud disabled:opacity-40"
-        >
-          Activate Containment Mode
-        </button>
-
-        {status && <p className="text-sm text-cloud/70">status: {status}</p>}
-        {hash && <p className="break-all text-xs text-cloud/50">tx hash: {hash}</p>}
-        {writeError && <p className="text-xs text-red">error: {writeError.message}</p>}
-      </form>
+          {status && <p className="text-sm text-cloud/70">status: {status}</p>}
+          {hash && <p className="break-all text-xs text-cloud/50">tx hash: {hash}</p>}
+          {writeError && <p className="text-xs text-red">error: {writeError.message}</p>}
+        </form>
+      </Card>
     </div>
   )
 }
@@ -816,7 +902,7 @@ function RecoveryTab({ address }: { address: `0x${string}` }) {
   )
 
   return (
-    <div className="max-w-xl space-y-6">
+    <div className="max-w-xl space-y-4">
       <div>
         <h2 className="font-manrope text-lg font-semibold">Trusted Recovery Address</h2>
         <p className="text-sm text-cloud/70">
@@ -826,7 +912,7 @@ function RecoveryTab({ address }: { address: `0x${string}` }) {
       </div>
 
       {hasPendingChange ? (
-        <div className="space-y-3">
+        <Card className="space-y-3 border-cloud/10 bg-cloud/5 p-5">
           <p className="text-sm">
             Pending change to:{' '}
             <span className="font-mono" title={pendingSafe}>
@@ -858,9 +944,9 @@ function RecoveryTab({ address }: { address: `0x${string}` }) {
             <p className="text-xs text-cloud/50">Confirm Change unlocks once the 24h delay finishes.</p>
           )}
           {statusBlock}
-        </div>
+        </Card>
       ) : hasSafeSet ? (
-        <div className="space-y-3">
+        <Card className="space-y-3 border-cloud/10 bg-cloud/5 p-5">
           <p className="text-sm">
             Current recovery address:{' '}
             <span className="font-mono" title={currentSafe}>
@@ -885,9 +971,9 @@ function RecoveryTab({ address }: { address: `0x${string}` }) {
           </form>
           <p className="text-xs text-cloud/50">Changes take effect 24 hours after being requested.</p>
           {statusBlock}
-        </div>
+        </Card>
       ) : (
-        <div className="space-y-3">
+        <Card className="space-y-3 border-cloud/10 bg-cloud/5 p-5">
           <p className="text-sm text-cloud/70">No trusted recovery address set yet.</p>
           <form onSubmit={handleSet} className="flex gap-2">
             <input
@@ -906,27 +992,28 @@ function RecoveryTab({ address }: { address: `0x${string}` }) {
             </button>
           </form>
           {statusBlock}
-        </div>
+        </Card>
       )}
     </div>
   )
 }
 
 /* ---------------------------------------------------------------------- */
-/* App shell — tab bar + always-visible connect/status                    */
+/* Dashboard app shell — top tab bar, logo + wordmark top-left            */
+/* Rendered under the /app route; landing page lives in LandingPage.tsx.  */
 /* ---------------------------------------------------------------------- */
 
-const TABS = [
-  { id: 'dashboard', label: 'Dashboard' },
-  { id: 'containment', label: 'Containment Mode' },
+const NAV_ITEMS = [
+  { id: 'overview', label: 'Overview' },
   { id: 'recovery', label: 'Trusted Recovery Address' },
+  { id: 'containment', label: 'Containment Mode' },
 ] as const
 
-type TabId = (typeof TABS)[number]['id']
+type TabId = (typeof NAV_ITEMS)[number]['id']
 
-function App() {
+function DashboardApp() {
   const { address, isConnected } = useAccount()
-  const [activeTab, setActiveTab] = useState<TabId>('dashboard')
+  const [activeTab, setActiveTab] = useState<TabId>('overview')
 
   const { data, isLoading, isError, error, refetch } = useReadContract({
     ...watcherContract,
@@ -939,60 +1026,72 @@ function App() {
 
   return (
     <div className="min-h-screen bg-navy font-inter text-cloud">
-      <header className="flex items-center justify-between border-b border-cloud/10 px-6 py-4">
-        <span className="font-manrope text-lg font-semibold tracking-tight">Watcher</span>
-        <ConnectButton />
+      {/* Header stays full-width edge-to-edge — its own px-6, not part of the
+          centered content column below. */}
+      <header className="flex items-center justify-between border-b border-cloud/10 px-6 py-3">
+        <Link to="/" className="flex items-center gap-2">
+          <img src="/logo-cloud.png" alt="" className="h-7 w-7" />
+          <span className="font-manrope text-lg font-semibold tracking-tight">Watcher</span>
+        </Link>
+        <div className="flex items-center gap-3">
+          <span className="rounded-full border border-cloud/15 bg-cloud/5 px-2.5 py-1 text-xs font-medium text-cloud/60">
+            Sepolia
+          </span>
+          <ConnectButton />
+        </div>
       </header>
 
-      <div className="px-6 py-3 font-mono text-xs text-cloud/60">
-        {isConnected && address ? <p>connected: {address}</p> : <p>not connected</p>}
+      {/* Independent centered column for the tab row + tab content — a fixed
+          max-width block floating in the middle of the page, unrelated to
+          the header's full-width edges. Every tab shares this one wrapper
+          so they all line up to the same width and alignment. */}
+      <div className="mx-auto w-full max-w-4xl px-6">
+        <nav className="flex gap-1 border-b border-cloud/10 py-2">
+          {NAV_ITEMS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`rounded-full px-4 py-1.5 text-sm transition-colors ${
+                activeTab === tab.id ? 'bg-cloud font-medium text-navy' : 'text-cloud/50 hover:text-cloud/80'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+
+        <main className="py-4">
+          {!isConnected || !address ? (
+            <p className="text-sm text-cloud/60">Connect a wallet to continue.</p>
+          ) : (
+            <>
+              {activeTab === 'overview' && (
+                <OverviewTab
+                  address={address}
+                  userState={userState}
+                  isLoading={isLoading}
+                  isError={isError}
+                  error={error}
+                  refetch={refetch}
+                  setActiveTab={setActiveTab}
+                />
+              )}
+              {activeTab === 'containment' && (
+                <ContainmentModeTab
+                  address={address}
+                  isLocked={userState?.[5]}
+                  remainingLockTime={userState?.[6]}
+                  onConfirmed={refetch}
+                />
+              )}
+              {activeTab === 'recovery' && <RecoveryTab address={address} />}
+            </>
+          )}
+        </main>
       </div>
-
-      <nav className="flex gap-1 border-b border-cloud/10 px-6 pb-3">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setActiveTab(tab.id)}
-            className={`rounded-full px-4 py-1.5 text-sm transition-colors ${
-              activeTab === tab.id ? 'bg-cloud font-medium text-navy' : 'text-cloud/50 hover:text-cloud/80'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </nav>
-
-      <main className="px-6 py-6">
-        {!isConnected || !address ? (
-          <p className="text-sm text-cloud/60">Connect a wallet to continue.</p>
-        ) : (
-          <>
-            {activeTab === 'dashboard' && (
-              <DashboardTab
-                address={address}
-                userState={userState}
-                isLoading={isLoading}
-                isError={isError}
-                error={error}
-                refetch={refetch}
-                setActiveTab={setActiveTab}
-              />
-            )}
-            {activeTab === 'containment' && (
-              <ContainmentModeTab
-                address={address}
-                isLocked={userState?.[5]}
-                remainingLockTime={userState?.[6]}
-                onConfirmed={refetch}
-              />
-            )}
-            {activeTab === 'recovery' && <RecoveryTab address={address} />}
-          </>
-        )}
-      </main>
     </div>
   )
 }
 
-export default App
+export default DashboardApp
