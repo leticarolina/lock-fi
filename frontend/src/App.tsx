@@ -1,6 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
+import LedgerSignerTab from './LedgerSignerTab'
+import LedgerAuthorizeWithdrawal from './LedgerAuthorizeWithdrawal'
+import { useLedgerAuthorizeWithdrawal } from './lib/useLedgerAuthorizeWithdrawal'
 import {
   useAccount,
   useReadContract,
@@ -9,26 +12,13 @@ import {
 } from 'wagmi'
 import { decodeEventLog, formatEther, parseEther, zeroAddress, type TransactionReceipt } from 'viem'
 import { watcherAbi, watcherContract } from './lib/contract'
+import { formatDuration, maskAddress, useCountdownSeconds } from './lib/format'
+import Card from './Card'
+import ContainmentLockBanner from './ContainmentLockBanner'
 
 // Matches the ABI's getUserState output order exactly:
 // balance, instantLimit, hasPending, pendingAmount, remainingPendingTime, isLocked, remainingLockTime
 type UserState = readonly [bigint, bigint, boolean, bigint, bigint, boolean, bigint]
-
-// Seconds -> "1d 2h 30m" style string. Good enough for status text, not a
-// polished countdown widget.
-function formatDuration(totalSeconds: number): string {
-  if (!Number.isFinite(totalSeconds) || totalSeconds <= 0) return '0s'
-  const days = Math.floor(totalSeconds / 86400)
-  const hours = Math.floor((totalSeconds % 86400) / 3600)
-  const minutes = Math.floor((totalSeconds % 3600) / 60)
-  const seconds = Math.floor(totalSeconds % 60)
-  const parts: string[] = []
-  if (days) parts.push(`${days}d`)
-  if (hours) parts.push(`${hours}h`)
-  if (minutes) parts.push(`${minutes}m`)
-  if (!days && !hours && seconds) parts.push(`${seconds}s`)
-  return parts.length ? parts.join(' ') : '0s'
-}
 
 // Wei -> a rounded, human-readable ETH string (default 6 decimals, trailing
 // zeros trimmed). Display only — inputs still parse with parseEther as wei.
@@ -37,28 +27,10 @@ function formatEth(value: bigint | undefined, maxDecimals = 6): string {
   return Number(formatEther(value)).toLocaleString(undefined, { maximumFractionDigits: maxDecimals })
 }
 
-type DurationUnit = 'minutes' | 'hours' | 'days'
-const DURATION_UNIT_SECONDS: Record<DurationUnit, number> = { minutes: 60, hours: 3600, days: 86400 }
-
-// "0x0944...06C6" — first 6 chars + last 4. Display only; pair with a
-// title="" of the full address so it's still verifiable on hover.
-function maskAddress(address: string | undefined): string {
-  if (!address) return ''
-  return `${address.slice(0, 6)}...${address.slice(-4)}`
-}
-
 /* ---------------------------------------------------------------------- */
-/* Overview tab — Card, BalanceCard, SecurityStatusCard, DepositForm,     */
+/* Overview tab — BalanceCard, SecurityStatusCard, DepositForm,           */
 /* WithdrawForm. Logic unchanged from the previous step, styling only.    */
 /* ---------------------------------------------------------------------- */
-
-// Bare structural shell shared by every card in the Overview layout —
-// callers supply their own border/bg color and padding via className so
-// tone variants (e.g. the amber/red-tinted Security Status card) don't
-// fight the default neutral colors in the Tailwind cascade.
-function Card({ className = '', children }: { className?: string; children: React.ReactNode }) {
-  return <div className={`rounded-2xl border ${className}`}>{children}</div>
-}
 
 function BalanceCard({
   balance,
@@ -241,13 +213,13 @@ function findWithdrawOutcome(
 
 function WithdrawForm({
   address,
-  instantLimit,
+  hasPending,
   isLocked,
   lockCountdown,
   onConfirmed,
 }: {
   address: `0x${string}`
-  instantLimit: bigint | undefined
+  hasPending: boolean | undefined
   isLocked: boolean | undefined
   lockCountdown: number | undefined
   onConfirmed: () => void
@@ -256,12 +228,7 @@ function WithdrawForm({
 
   const { writeContract, data: hash, isPending: isWaitingForWallet, error: writeError } = useWriteContract()
 
-  const {
-    data: receipt,
-    isLoading: isConfirming,
-    isSuccess: isConfirmed,
-    isError: isReceiptError,
-  } = useWaitForTransactionReceipt({ hash })
+  const { data: receipt, isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash })
 
   // Pure function of receipt/address — derived directly during render, no
   // effect or memoization needed for a handful of logs.
@@ -283,28 +250,6 @@ function WithdrawForm({
     })
   }
 
-  let status = ''
-  if (isWaitingForWallet) status = 'waiting for wallet confirmation'
-  else if (isConfirming) status = 'transaction pending'
-  else if (isConfirmed) status = 'confirmed'
-  else if (isReceiptError || writeError) status = 'failed'
-
-  // Hint only, not a guarantee: this only reflects the 60%-of-balance instant
-  // limit. Actual outcome also depends on withdrawal history rules (e.g. an
-  // existing pending withdrawal) that this preview can't see.
-  let preview: string | null = null
-  if (amount && instantLimit !== undefined) {
-    try {
-      const parsedAmount = parseEther(amount)
-      preview =
-        parsedAmount < instantLimit
-          ? `up to ${formatEth(instantLimit)} ETH is instant under normal conditions (this is a hint based on the 60%-of-balance rule only — actual outcome also depends on withdrawal history rules this preview can't predict).`
-          : `this amount will likely be queued (at or over the ${formatEth(instantLimit)} ETH instant limit) — this is a hint based on the 60%-of-balance rule only, not a guarantee.`
-    } catch {
-      preview = null
-    }
-  }
-
   // withdraw() reverts with EmergencyLockOngoing while locked — block it
   // client-side too, with the reason visible instead of a silent revert.
   const lockedReason = isLocked
@@ -323,23 +268,18 @@ function WithdrawForm({
         />
         <button
           type="submit"
-          disabled={isWaitingForWallet || isConfirming || Boolean(isLocked)}
+          // The contract only allows one pending withdrawal at a time —
+          // block a second submission client-side too while one is already
+          // queued (see the Security Queue card).
+          disabled={isWaitingForWallet || isConfirming || Boolean(isLocked) || Boolean(hasPending)}
           className="rounded bg-teal px-4 py-2 text-sm font-medium text-cloud disabled:opacity-40"
         >
           Withdraw
         </button>
       </div>
       {lockedReason && <p className="text-xs text-red">{lockedReason}</p>}
-      {preview && <p className="text-xs text-cloud/60">{preview}</p>}
-      {status && <p className="text-sm text-cloud/70">status: {status}</p>}
-      {hash && <p className="break-all text-xs text-cloud/50">tx hash: {hash}</p>}
       {writeError && <p className="text-xs text-red">error: {writeError.message}</p>}
       {outcome?.kind === 'instant' && <p className="text-sm text-teal">Sent instantly</p>}
-      {outcome?.kind === 'queued' && (
-        <p className="text-sm text-amber">
-          Queued — unlocks at {new Date(Number(outcome.unlockTime) * 1000).toLocaleString()}
-        </p>
-      )}
     </form>
   )
 }
@@ -355,6 +295,8 @@ function SecurityQueueSection({
   pendingCountdown,
   isLocked,
   lockCountdown,
+  requiresLedgerSignature,
+  address,
   onConfirmed,
 }: {
   hasPending: boolean | undefined
@@ -362,6 +304,8 @@ function SecurityQueueSection({
   pendingCountdown: number | undefined
   isLocked: boolean | undefined
   lockCountdown: number | undefined
+  requiresLedgerSignature: boolean
+  address: `0x${string}`
   onConfirmed: () => void
 }) {
   // pendingCountdown is lifted from OverviewTab (same pattern as lockCountdown
@@ -370,11 +314,20 @@ function SecurityQueueSection({
   const countdown = pendingCountdown
   const isReady = countdown !== undefined && countdown <= 0
 
+  // Called unconditionally regardless of requiresLedgerSignature (Rules of
+  // Hooks) — its output only actually gets used in the Ledger-required
+  // branch below. Owns the whole connect -> sign -> executeWithdraw flow so
+  // the trigger button (top of the card, next to Cancel Withdrawal) and the
+  // transport toggle/status panel (further down) can render in different
+  // places while staying in sync.
+  const ledgerFlow = useLedgerAuthorizeWithdrawal({ address, pendingAmount, onConfirmed })
+
   const {
     writeContract: writeCancel,
     data: cancelHash,
     isPending: isCancelWaitingForWallet,
     error: cancelError,
+    reset: resetCancel,
   } = useWriteContract()
   const {
     isLoading: isCancelConfirming,
@@ -401,6 +354,7 @@ function SecurityQueueSection({
     data: executeHash,
     isPending: isExecuteWaitingForWallet,
     error: executeError,
+    reset: resetExecute,
   } = useWriteContract()
   const {
     isLoading: isExecuteConfirming,
@@ -412,6 +366,19 @@ function SecurityQueueSection({
     if (isExecuteConfirmed) onConfirmed()
   }, [isExecuteConfirmed, onConfirmed])
 
+  // This component's own render output goes to null (not unmounted) whenever
+  // there's no pending withdrawal, so writeCancel/writeExecute's mutation
+  // state — status, hash, error — otherwise survives across two completely
+  // different withdrawals. Reset both the moment a (new) pending withdrawal
+  // appears so a previous withdrawal's cancel/execute status never bleeds
+  // into this one's display.
+  useEffect(() => {
+    if (hasPending) {
+      resetCancel()
+      resetExecute()
+    }
+  }, [hasPending, resetCancel, resetExecute])
+
   let executeStatus = ''
   if (isExecuteWaitingForWallet) executeStatus = 'waiting for wallet confirmation'
   else if (isExecuteConfirming) executeStatus = 'transaction pending'
@@ -419,8 +386,10 @@ function SecurityQueueSection({
   else if (isExecuteReceiptError || executeError) executeStatus = 'failed'
 
   const handleExecute = () => {
-    // No Ledger signer is registered for anyone yet, so the contract skips
-    // signature verification — "0x" is the correct call until that's built.
+    // Only reachable when requiresLedgerSignature is false — the contract
+    // skips signature verification entirely when no Ledger signer is
+    // registered for this user, so "0x" is the correct call here. The
+    // Ledger-signed path lives in LedgerAuthorizeWithdrawal below.
     writeExecute({ ...watcherContract, functionName: 'executeWithdraw', args: ['0x'] })
   }
 
@@ -429,40 +398,48 @@ function SecurityQueueSection({
   const countdownText = countdown !== undefined ? formatDuration(countdown) : '…'
 
   // executeWithdraw() reverts with EmergencyLockOngoing while locked — block
-  // it client-side too, with the reason visible next to the button. Cancel
-  // is never blocked by the lock per the contract, so it's unaffected.
+  // it client-side too. Cancel is never blocked by the lock per the
+  // contract, so it's unaffected. The reason string only covers the
+  // Containment Mode case (a different timer) — the plain "still locked"
+  // case is omitted since the card's own big countdown above already says
+  // that; repeating "unlocks in X" here would just be the same line twice.
   const executeDisabled = !isReady || isExecuteBusy || Boolean(isLocked)
   const executeDisabledReason = isLocked
     ? `vault is in Containment Mode — unlocks in ${lockCountdown !== undefined ? formatDuration(lockCountdown) : '…'}`
-    : !isReady
-      ? `unlocks in ${countdownText}`
-      : null
+    : null
+
+  // Nothing to show — no card at all rather than a "No pending withdrawal"
+  // placeholder. All the hooks above still run unconditionally either way.
+  if (!hasPending) return null
 
   return (
-    <div className="space-y-2">
-      <h3 className="font-manrope text-sm font-semibold text-cloud/80">Security Queue</h3>
-      <div
-        className={`space-y-3 rounded-lg border px-4 py-3 text-sm ${
-          hasPending ? 'border-amber/40 bg-amber/10 text-amber' : 'border-teal/40 bg-teal/10 text-teal'
-        }`}
-      >
-        {hasPending ? (
-          <>
-            <div>
-              <p className="font-manrope font-semibold">Pending</p>
-              <p>{formatEth(pendingAmount)} ETH queued</p>
-              <p>{isReady ? 'ready to authorize' : `unlocks in ${countdownText}`}</p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={handleCancel}
-                disabled={isCancelBusy}
-                className="rounded border border-cloud/20 bg-cloud/10 px-4 py-2 text-sm font-medium text-cloud disabled:opacity-40"
-              >
-                Cancel Withdrawal
-              </button>
+    <Card className="space-y-3 border-amber/40 bg-amber/10 p-5 text-amber">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs opacity-70">Security Queue</p>
+          <p className="font-manrope text-3xl font-bold leading-tight">{isReady ? 'Ready' : countdownText}</p>
+          <p className="text-sm opacity-80">{formatEth(pendingAmount)} ETH queued</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleCancel}
+            disabled={isCancelBusy}
+            className="rounded border border-cloud/20 bg-cloud/10 px-4 py-2 text-sm font-medium text-cloud disabled:opacity-40"
+          >
+            Cancel Withdrawal
+          </button>
+          {requiresLedgerSignature ? (
+            <button
+              type="button"
+              onClick={ledgerFlow.handleClick}
+              disabled={executeDisabled || ledgerFlow.isBusy}
+              className="rounded bg-teal px-4 py-2 text-sm font-medium text-cloud disabled:opacity-40"
+            >
+              Execute Withdrawal
+            </button>
+          ) : (
+            <>
               <button
                 type="button"
                 onClick={handleExecute}
@@ -472,21 +449,42 @@ function SecurityQueueSection({
                 Authorize Withdrawal
               </button>
               {executeDisabledReason && <span className="text-xs opacity-80">{executeDisabledReason}</span>}
-            </div>
+            </>
+          )}
+        </div>
+      </div>
 
-            {cancelStatus && <p className="text-xs opacity-90">cancel status: {cancelStatus}</p>}
-            {cancelHash && <p className="break-all text-xs opacity-70">cancel tx hash: {cancelHash}</p>}
-            {cancelError && <p className="text-xs text-red">cancel error: {cancelError.message}</p>}
+      {cancelStatus && <p className="text-xs opacity-90">cancel status: {cancelStatus}</p>}
+      {cancelHash && <p className="break-all text-xs opacity-70">cancel tx hash: {cancelHash}</p>}
+      {cancelError && <p className="text-xs text-red">cancel error: {cancelError.message}</p>}
 
+      {requiresLedgerSignature ? (
+        <div className="space-y-2 border-t border-current/10 pt-3">
+          <p className="text-xs font-semibold uppercase tracking-wide opacity-70">
+            Authorize Withdrawal (Ledger signature required)
+          </p>
+          <LedgerAuthorizeWithdrawal
+            transportChoice={ledgerFlow.transportChoice}
+            setTransportChoice={ledgerFlow.setTransportChoice}
+            state={ledgerFlow.state}
+            isBusy={ledgerFlow.isBusy}
+            executeStatus={ledgerFlow.executeStatus}
+            executeHash={ledgerFlow.executeHash}
+            executeError={ledgerFlow.executeError}
+            disabled={executeDisabled}
+            disabledReason={executeDisabledReason}
+          />
+        </div>
+      ) : (
+        (executeStatus || executeHash || executeError) && (
+          <div className="space-y-2 border-t border-current/10 pt-3">
             {executeStatus && <p className="text-xs opacity-90">authorize status: {executeStatus}</p>}
             {executeHash && <p className="break-all text-xs opacity-70">authorize tx hash: {executeHash}</p>}
             {executeError && <p className="text-xs text-red">authorize error: {executeError.message}</p>}
-          </>
-        ) : (
-          <p className="font-manrope font-semibold">No pending withdrawal</p>
-        )}
-      </div>
-    </div>
+          </div>
+        )
+      )}
+    </Card>
   )
 }
 
@@ -507,13 +505,24 @@ function OverviewTab({
   refetch: () => void
   setActiveTab: (tab: TabId) => void
 }) {
+  // Whether Authorize Withdrawal needs a Ledger co-signature — read
+  // separately from getUserState since it's a different mapping entirely.
+  const { data: ledgerStateData, refetch: refetchLedgerState } = useReadContract({
+    ...watcherContract,
+    functionName: 'getLedgerSignerState',
+    args: [address],
+  })
+  const ledgerCurrentSigner = (ledgerStateData as readonly [`0x${string}`, `0x${string}`, bigint] | undefined)?.[0]
+  const requiresLedgerSignature = ledgerCurrentSigner !== undefined && ledgerCurrentSigner !== zeroAddress
+
   // Overview content unmounts/remounts when the tab is switched away and
   // back (App only keeps the getUserState *read* lifted, not this view) —
   // refetch on activation so a queue state that changed while this tab was
   // hidden is reflected immediately rather than waiting on a stale cache hit.
   useEffect(() => {
     refetch()
-  }, [refetch])
+    refetchLedgerState()
+  }, [refetch, refetchLedgerState])
 
   const hasPending = userState?.[2]
   const pendingAmount = userState?.[3]
@@ -530,19 +539,7 @@ function OverviewTab({
   return (
     <div className="max-w-5xl space-y-4">
       {isLocked && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red/40 bg-red/10 px-4 py-3 text-sm text-red">
-          <div>
-            <p className="font-manrope font-semibold">Containment Mode is ACTIVE</p>
-            <p>Withdrawals are frozen — unlocks in {lockCountdown !== undefined ? formatDuration(lockCountdown) : '…'}</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setActiveTab('containment')}
-            className="rounded border border-red/40 bg-red/10 px-3 py-1.5 text-xs font-medium text-red hover:bg-red/20"
-          >
-            View Containment Mode
-          </button>
-        </div>
+        <ContainmentLockBanner lockCountdown={lockCountdown} onViewContainment={() => setActiveTab('containment')} />
       )}
 
       {isLoading && <p className="text-sm text-cloud/70">Loading getUserState...</p>}
@@ -553,16 +550,16 @@ function OverviewTab({
         <SecurityStatusCard isLocked={isLocked} hasPending={hasPending} />
       </div>
 
-      <Card className="border-cloud/10 bg-cloud/5 p-5">
-        <SecurityQueueSection
-          hasPending={hasPending}
-          pendingAmount={pendingAmount}
-          pendingCountdown={pendingCountdown}
-          isLocked={isLocked}
-          lockCountdown={lockCountdown}
-          onConfirmed={refetch}
-        />
-      </Card>
+      <SecurityQueueSection
+        hasPending={hasPending}
+        pendingAmount={pendingAmount}
+        pendingCountdown={pendingCountdown}
+        isLocked={isLocked}
+        lockCountdown={lockCountdown}
+        requiresLedgerSignature={requiresLedgerSignature}
+        address={address}
+        onConfirmed={refetch}
+      />
 
       <div className="grid gap-3 sm:grid-cols-2">
         <Card className="border-cloud/10 bg-cloud/5 p-5">
@@ -573,7 +570,7 @@ function OverviewTab({
           <h3 className="mb-2 font-manrope text-sm font-semibold text-cloud/80">Withdraw</h3>
           <WithdrawForm
             address={address}
-            instantLimit={userState?.[1]}
+            hasPending={hasPending}
             isLocked={isLocked}
             lockCountdown={lockCountdown}
             onConfirmed={refetch}
@@ -624,24 +621,20 @@ function ContainmentModeTab({
   const minLockDuration = minLockDurationData as bigint | undefined
   const maxLockDuration = maxLockDurationData as bigint | undefined
 
-  const [amountInput, setAmountInput] = useState('')
-  const [unit, setUnit] = useState<DurationUnit>('hours')
+  // Slider works directly in seconds now — one control spanning the full
+  // allowed range, with the displayed value auto-formatted (via
+  // formatDuration) rather than driven by a separate unit picker.
+  const sliderMin = minLockDuration !== undefined ? Number(minLockDuration) : undefined
+  const sliderMax = maxLockDuration !== undefined ? Number(maxLockDuration) : undefined
 
-  // Slider bounds in whichever unit is currently selected, recomputed
-  // whenever the unit or the live MIN_LOCK_DURATION/MAX_LOCK_DURATION change.
-  const sliderMin =
-    minLockDuration !== undefined ? Math.ceil(Number(minLockDuration) / DURATION_UNIT_SECONDS[unit]) : undefined
-  const sliderMax =
-    maxLockDuration !== undefined
-      ? Math.max(sliderMin ?? 0, Math.floor(Number(maxLockDuration) / DURATION_UNIT_SECONDS[unit]))
-      : undefined
+  const [durationSeconds, setDurationSeconds] = useState<number | undefined>(undefined)
 
-  // Default to the minimum allowed value whenever the unit changes (a raw
-  // number doesn't carry over meaningfully across units — "5" means
-  // something very different as hours vs. days) or once bounds first load.
+  // Default to the minimum allowed duration once the live bounds first load.
   useEffect(() => {
-    if (sliderMin !== undefined) setAmountInput(String(sliderMin))
-  }, [unit, sliderMin])
+    if (durationSeconds === undefined && sliderMin !== undefined) {
+      setDurationSeconds(sliderMin)
+    }
+  }, [sliderMin, durationSeconds])
 
   const { writeContract, data: hash, isPending: isWaitingForWallet, error: writeError } = useWriteContract()
 
@@ -654,9 +647,9 @@ function ContainmentModeTab({
   useEffect(() => {
     if (isConfirmed) {
       onConfirmed()
-      setAmountInput('')
+      setDurationSeconds(sliderMin)
     }
-  }, [isConfirmed, onConfirmed])
+  }, [isConfirmed, onConfirmed, sliderMin])
 
   let status = ''
   if (isWaitingForWallet) status = 'waiting for wallet confirmation'
@@ -664,17 +657,14 @@ function ContainmentModeTab({
   else if (isConfirmed) status = 'confirmed'
   else if (isReceiptError || writeError) status = 'failed'
 
-  const parsedAmount = Number(amountInput)
-  const durationSeconds =
-    amountInput.trim() && Number.isFinite(parsedAmount) && parsedAmount > 0
-      ? BigInt(Math.round(parsedAmount * DURATION_UNIT_SECONDS[unit]))
-      : undefined
-
+  // The range input's own min/max already keep durationSeconds within
+  // bounds, so this is mostly a defensive check for the brief window before
+  // sliderMin/sliderMax have loaded.
   let validationError: string | null = null
   if (durationSeconds !== undefined && minLockDuration !== undefined && maxLockDuration !== undefined) {
-    if (durationSeconds < minLockDuration) {
+    if (durationSeconds < Number(minLockDuration)) {
       validationError = `Duration must be at least ${formatDuration(Number(minLockDuration))}.`
-    } else if (durationSeconds > maxLockDuration) {
+    } else if (durationSeconds > Number(maxLockDuration)) {
       validationError = `Duration must be at most ${formatDuration(Number(maxLockDuration))}.`
     }
   }
@@ -687,7 +677,7 @@ function ContainmentModeTab({
     writeContract({
       ...watcherContract,
       functionName: 'emergencyLock',
-      args: [durationSeconds],
+      args: [BigInt(durationSeconds)],
     })
   }
 
@@ -731,29 +721,18 @@ function ContainmentModeTab({
       <Card className="border-cloud/10 bg-cloud/5 p-5">
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <span className="font-manrope text-sm font-semibold text-cloud">
-                {amountInput || sliderMin} {unit}
-              </span>
-              <select
-                value={unit}
-                onChange={(e) => setUnit(e.target.value as DurationUnit)}
-                className="rounded border border-cloud/20 bg-cloud/5 px-3 py-2 text-sm text-cloud"
-              >
-                <option value="minutes">minutes</option>
-                <option value="hours">hours</option>
-                <option value="days">days</option>
-              </select>
-            </div>
+            <span className="font-manrope text-sm font-semibold text-cloud">
+              {formatDuration(durationSeconds ?? sliderMin ?? 0)}
+            </span>
 
             {sliderMin !== undefined && sliderMax !== undefined ? (
               <input
                 type="range"
                 min={sliderMin}
                 max={sliderMax}
-                step={1}
-                value={amountInput || sliderMin}
-                onChange={(e) => setAmountInput(e.target.value)}
+                step={600}
+                value={durationSeconds ?? sliderMin}
+                onChange={(e) => setDurationSeconds(Number(e.target.value))}
                 className="w-full accent-red"
               />
             ) : (
@@ -794,39 +773,22 @@ function ContainmentModeTab({
 /* Trusted Recovery Address tab                                           */
 /* ---------------------------------------------------------------------- */
 
-// Ticks down to zero once per second from an absolute target timestamp,
-// captured once (Date.now() + remainingSeconds * 1000) whenever a fresh
-// value comes in from a read. From there it counts down on its own clock,
-// independent of the read's refetch cadence — the number moves live in the
-// UI instead of only jumping on the next refetch. "Now" is tracked as state
-// (updated by an effect/interval) rather than read via Date.now() during
-// render — the passage of time is exactly the kind of external system an
-// effect exists to synchronize with.
-function useCountdownSeconds(remainingSeconds: bigint | undefined): number | undefined {
-  const [target, setTarget] = useState<number | null>(null)
-  const [now, setNow] = useState<number | null>(null)
+function RecoveryTab({
+  address,
+  isLocked,
+  remainingLockTime,
+  onViewContainment,
+}: {
+  address: `0x${string}`
+  isLocked: boolean | undefined
+  remainingLockTime: bigint | undefined
+  onViewContainment: () => void
+}) {
+  // Independent from Overview's own lockCountdown instance — this tab has no
+  // other countdown to share it with, so a fresh one here is fine (matches
+  // the same pattern ContainmentModeTab itself already uses).
+  const lockCountdown = useCountdownSeconds(isLocked ? remainingLockTime : undefined)
 
-  useEffect(() => {
-    if (remainingSeconds === undefined) {
-      setTarget(null)
-      setNow(null)
-      return
-    }
-    const start = Date.now()
-    setTarget(start + Number(remainingSeconds) * 1000)
-    setNow(start)
-  }, [remainingSeconds])
-
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(id)
-  }, [])
-
-  if (target === null || now === null) return undefined
-  return Math.max(0, Math.round((target - now) / 1000))
-}
-
-function RecoveryTab({ address }: { address: `0x${string}` }) {
   const { data: safeAddressData, refetch: refetchSafeAddress } = useReadContract({
     ...watcherContract,
     functionName: 'safeAddress',
@@ -903,6 +865,8 @@ function RecoveryTab({ address }: { address: `0x${string}` }) {
 
   return (
     <div className="max-w-xl space-y-4">
+      {isLocked && <ContainmentLockBanner lockCountdown={lockCountdown} onViewContainment={onViewContainment} />}
+
       <div>
         <h2 className="font-manrope text-lg font-semibold">Trusted Recovery Address</h2>
         <p className="text-sm text-cloud/70">
@@ -1007,6 +971,7 @@ const NAV_ITEMS = [
   { id: 'overview', label: 'Overview' },
   { id: 'recovery', label: 'Trusted Recovery Address' },
   { id: 'containment', label: 'Containment Mode' },
+  { id: 'ledger', label: 'Ledger Signer' },
 ] as const
 
 type TabId = (typeof NAV_ITEMS)[number]['id']
@@ -1014,6 +979,28 @@ type TabId = (typeof NAV_ITEMS)[number]['id']
 function DashboardApp() {
   const { address, isConnected } = useAccount()
   const [activeTab, setActiveTab] = useState<TabId>('overview')
+
+  // Sliding active-tab pill: measured off the actual button's box (offsets
+  // are relative to `nav`, its positioned ancestor) rather than hardcoded,
+  // so it stays correct regardless of label length. Recomputed whenever the
+  // active tab changes; the CSS transition below is what makes it slide
+  // instead of jumping.
+  const tabButtonRefs = useRef<Partial<Record<TabId, HTMLButtonElement>>>({})
+  const [pillRect, setPillRect] = useState<{ left: number; top: number; width: number; height: number } | null>(
+    null,
+  )
+
+  useLayoutEffect(() => {
+    const activeButton = tabButtonRefs.current[activeTab]
+    if (activeButton) {
+      setPillRect({
+        left: activeButton.offsetLeft,
+        top: activeButton.offsetTop,
+        width: activeButton.offsetWidth,
+        height: activeButton.offsetHeight,
+      })
+    }
+  }, [activeTab])
 
   const { data, isLoading, isError, error, refetch } = useReadContract({
     ...watcherContract,
@@ -1046,14 +1033,24 @@ function DashboardApp() {
           the header's full-width edges. Every tab shares this one wrapper
           so they all line up to the same width and alignment. */}
       <div className="mx-auto w-full max-w-4xl px-6">
-        <nav className="flex gap-1 border-b border-cloud/10 py-2">
+        <nav className="relative flex gap-1 border-b border-cloud/10 py-2">
+          {pillRect && (
+            <span
+              aria-hidden="true"
+              className="absolute rounded-full bg-cloud transition-all duration-200 ease-out"
+              style={{ left: pillRect.left, top: pillRect.top, width: pillRect.width, height: pillRect.height }}
+            />
+          )}
           {NAV_ITEMS.map((tab) => (
             <button
               key={tab.id}
+              ref={(el) => {
+                tabButtonRefs.current[tab.id] = el ?? undefined
+              }}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`rounded-full px-4 py-1.5 text-sm transition-colors ${
-                activeTab === tab.id ? 'bg-cloud font-medium text-navy' : 'text-cloud/50 hover:text-cloud/80'
+              className={`relative z-10 rounded-full px-4 py-1.5 text-sm transition-colors ${
+                activeTab === tab.id ? 'font-medium text-navy' : 'text-cloud/50 hover:text-cloud/80'
               }`}
             >
               {tab.label}
@@ -1085,7 +1082,22 @@ function DashboardApp() {
                   onConfirmed={refetch}
                 />
               )}
-              {activeTab === 'recovery' && <RecoveryTab address={address} />}
+              {activeTab === 'recovery' && (
+                <RecoveryTab
+                  address={address}
+                  isLocked={userState?.[5]}
+                  remainingLockTime={userState?.[6]}
+                  onViewContainment={() => setActiveTab('containment')}
+                />
+              )}
+              {activeTab === 'ledger' && (
+                <LedgerSignerTab
+                  address={address}
+                  isLocked={userState?.[5]}
+                  remainingLockTime={userState?.[6]}
+                  onViewContainment={() => setActiveTab('containment')}
+                />
+              )}
             </>
           )}
         </main>
